@@ -12,7 +12,7 @@ var EnvRoom = {
         }
         if (Tools.count(room.memory.resources) < resouce_list.length){
             _.forEach(resouce_list, (r) => {
-                log.d(r.id)
+                //log.d(r.id)
                 if (!room.memory.resources[r.id])
                     room.memory.resources[r.id] = {}
             })
@@ -40,7 +40,7 @@ var Environment = {
             for (var name in Memory.creeps) {
                 if (!Game.creeps[name]) {
                     delete Memory.creeps[name]
-                    console.log("Clear dummy memory for " + name)
+                    //console.log("Clear dummy memory for " + name)
                 }
             }
             // clean resources mark in all rooms

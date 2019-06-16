@@ -173,13 +173,17 @@ var Build = {
             creep.memory.status = 'done'
             creep.memory.target_id = null
             return
+        } else if (target.progress >= target.progressTotal) {
+            // if target has been built, reset the target
+            creep.memory.target_id = null
+            return
         } else {
             creep.memory.status = 'working'
             if (creep.build(target) == ERR_NOT_IN_RANGE) {
                 creep.moveTo(target)
             } else {
                 // no energy, done. target disappear, done.
-                if (creep.carry.energy == 0 || !target || target.progress >= target.progressTotal) {
+                if (creep.carry.energy == 0) {
                     // no energy, can't upgrade, work done
                     creep.memory.status = 'done'
                     creep.memory.target_id = null
@@ -216,8 +220,8 @@ class Repair {
 
     findStructureToRepair(creep) {
         var room = creep.room
-        var structure_list = room.find(FIND_MY_STRUCTURES, {filter: (s) => {
-            return s.hits < s.hitsMax && s.hits < hits_trigger_repair
+        var structure_list = room.find(FIND_STRUCTURES, {filter: (s) => {
+            return s.hits < s.hitsMax && s.hits < this.hits_trigger_repair
         }})
         if (structure_list.length) {
             return structure_list[0]
@@ -242,24 +246,26 @@ class Repair {
             var target = Game.getObjectById(creep.memory.target_id)
         }
 
-
         // if there isn't a target, or target is in max hits, or target has been repaired to the desired hits
-        if (!target || target.hits >= target.hitsMax || target.hits >= this.repair_to_hits) {
+        if (!target) {
             // nothing to fill, work has done
             creep.memory.status = 'done'
             creep.memory.target_id = null
             return
+        } else if (target.hits >= target.hitsMax || target.hits >= this.repair_to_hits) {
+            // if target is fixed, reset the target
+            creep.memory.target_id = null
+            return
         } else {
             creep.memory.status = 'working'
-            if (creep.build(target) == ERR_NOT_IN_RANGE) {
+            if (creep.repair(target) == ERR_NOT_IN_RANGE) {
                 creep.moveTo(target)
             } else {
-                // no energy, done. target disappear, done.
-                if (creep.carry.energy == 0 || !target || target.hits >= target.hitsMax || target.hits >= this.repair_to_hits) {
+                // no energy, done.
+                if (creep.carry.energy == 0) {
                     // no energy, can't upgrade, work done
                     creep.memory.status = 'done'
                     creep.memory.target_id = null
-                    return
                 }
             }
         }
@@ -271,7 +277,7 @@ var priority_list = [
     Harvest,
     Maintain,
     Fill,
-    new Repair(3000,2000),
+    new Repair(4000,2000),
     Build,
     new Repair(5000,3000),
     Update,

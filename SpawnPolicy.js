@@ -44,7 +44,7 @@ var SpawnPolicy = {
                         if (spawn.room.energyCapacityAvailable >= cost && !spawn.spawning) {
                             if (spawn.room.energyAvailable >= cost) {
                                 var creep_name = role + Game.time
-                                console.log(spawn.name + " Start Spawn " + creep_name + "at level " + style.option.memory.level)
+                                //console.log(spawn.name + " Start Spawn " + creep_name + "at level " + style.option.memory.level)
                                 spawn.spawnCreep(style.design, creep_name, style.option)
                             }
                             // normally, we only need the highest level, but if our workers are all killed, then we allow to respawn lower level
