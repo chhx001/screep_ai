@@ -1,5 +1,5 @@
 var _plan = {
-    'worker': 6
+    'worker': 9
 }
 
 var Tools = require('Tools')
