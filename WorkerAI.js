@@ -271,7 +271,7 @@ var priority_list = [
     Harvest,
     Maintain,
     Fill,
-    new Repair(1000,200),
+    new Repair(3000,2000),
     Build,
     new Repair(5000,3000),
     Update,
