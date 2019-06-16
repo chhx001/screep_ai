@@ -4,16 +4,20 @@ var Route = require('Route')
 var Harvest = {
     RESOURCE_WORKER_LIMIT: 3,
     getResourceToHarvest: (creep) => {
+        var room = creep.room
         var resource_list = creep.room.find(FIND_SOURCES)
         if (resource_list.length > 0) {
             for (var no in resource_list) {
                 var resource = resource_list[no]
-                if (!Memory.resources[resource.id]) {
-                    Memory.resources[resource.id] = {}
+                if (!room.memory.resources) {
+                    room.memory["resources"] = {}
                 }
-                if (!Memory.resources[resource.id].worker_id_list ||
-                    Set.getLength(Memory.resources[resource.id].worker_id_list) < Harvest.RESOURCE_WORKER_LIMIT ||
-                    Set.exist(Memory.resources[resource.id].worker_id_list, creep.id)) {
+                if (!room.memory.resources[resource.id]) {
+                    room.memory.resources[resource.id] = {}
+                }
+                if (!room.memory.resources[resource.id].worker_id_list ||
+                    Set.getLength(room.memory.resources[resource.id].worker_id_list) < Harvest.RESOURCE_WORKER_LIMIT ||
+                    Set.exist(room.memory.resources[resource.id].worker_id_list, creep.id)) {
                     if (Route.isRouteSafe(resource.room, creep.pos, resource.pos))
                         return resource
                 }
@@ -24,6 +28,7 @@ var Harvest = {
     run : (creep) => {
         if (creep.carry.energy < creep.carryCapacity) {
             var resource = null
+            var room = creep.room
             // go harvest
             creep.memory.status = "working"
             // first time, so assign a resource
@@ -31,11 +36,11 @@ var Harvest = {
                 resource = Harvest.getResourceToHarvest(creep)
                 if (resource) {
                     creep.memory['target_id'] = resource.id
-                    if (!Memory.resources[resource.id].worker_id_list) {
-                        Memory.resources[resource.id]["worker_id_list"] = [creep.id]
+                    if (!room.memory.resources[resource.id].worker_id_list) {
+                        room.memory.resources[resource.id]["worker_id_list"] = [creep.id]
                     }
                     else
-                        Set.add(Memory.resources[resource.id].worker_id_list,creep.id)
+                        Set.add(room.memory.resources[resource.id].worker_id_list,creep.id)
                 }
             }
             else {
@@ -57,7 +62,7 @@ var Harvest = {
             if (creep.memory.target_id) {
                 var resource = Game.getObjectById(creep.memory.target_id)
                 // remove this creep from resourcing worker list, so that other workers can harvest it
-                Set.remove(Memory.resources[resource.id].worker_id_list,creep.id)
+                Set.remove(room.memory.resources[resource.id].worker_id_list,creep.id)
                 delete creep.memory['target_id']
             }
         }

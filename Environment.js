@@ -12,14 +12,17 @@ var Environment = {
                     console.log("Clear dummy memory for " + name)
                 }
             }
-            // clean resources mark
-            _.forEach(Memory.resources, (v, k) => {
-                _.forEach(v.worker_id_list, (e) => {
-                    if (e && !Game.getObjectById(e)) {
-                        ArraySet.remove(v.worker_id_list, e)
-                    }
+            // clean resources mark in all rooms
+            _.forEach(Memory.rooms, (room, room_name) => {
+                _.forEach(room.resources, (v, k) => {
+                    _.forEach(v.worker_id_list, (e) => {
+                        if (e && !Game.getObjectById(e)) {
+                            ArraySet.remove(v.worker_id_list, e)
+                        }
+                    })
                 })
             })
+            
         }
     },
     check: () => {
@@ -35,9 +38,6 @@ var Environment = {
         }
         
         Memory.global = {}
-        Memory.resources = {}
-        //Memory.creeps = {}
-        //Memory.rooms = {}
     },
     
 }
