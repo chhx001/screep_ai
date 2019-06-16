@@ -1,5 +1,6 @@
 var Set = require('ArraySet')
 var Route = require('Route')
+var log = require('Log')
 
 var Harvest = {
     RESOURCE_WORKER_LIMIT: 3,
@@ -26,9 +27,9 @@ var Harvest = {
         return null
     },
     run : (creep) => {
+        var room = creep.room
         if (creep.carry.energy < creep.carryCapacity) {
             var resource = null
-            var room = creep.room
             // go harvest
             creep.memory.status = "working"
             // first time, so assign a resource
