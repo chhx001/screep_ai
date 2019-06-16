@@ -3,7 +3,7 @@ var Route = require('Route')
 var log = require('Log')
 
 var Harvest = {
-    RESOURCE_WORKER_LIMIT: 3,
+    REDUNDANT_RESOUCE_WORKER_MULTIPLY: 1.5,
     getResourceToHarvest: (creep) => {
         var room = creep.room
         var resource_list = creep.room.find(FIND_SOURCES)
@@ -16,8 +16,9 @@ var Harvest = {
                 if (!room.memory.resources[resource.id]) {
                     room.memory.resources[resource.id] = {}
                 }
+
                 if (!room.memory.resources[resource.id].worker_id_list ||
-                    Set.getLength(room.memory.resources[resource.id].worker_id_list) < Harvest.RESOURCE_WORKER_LIMIT ||
+                    Set.getLength(room.memory.resources[resource.id].worker_id_list) < Math.ceil(room.memory.resources[resource.id].max_worker * Harvest.REDUNDANT_RESOUCE_WORKER_MULTIPLY) ||
                     Set.exist(room.memory.resources[resource.id].worker_id_list, creep.id)) {
                     if (Route.isRouteSafe(resource.room, creep.pos, resource.pos))
                         return resource
