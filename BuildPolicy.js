@@ -205,6 +205,7 @@ var Tower = {
                 Log.error("Can't find pos to set tower in the room, please check")
                 break
             } else {
+                pos = room.getPositionAt(pos.x, pos.y)
                 // add postion to exception list in case it may be found in the next turn again
                 exception_list[exception_list.length] = pos
             }
@@ -215,15 +216,12 @@ var Tower = {
                 // build tower wall and ramparts
                 // first we need to decide where is the door, it is at the corner, and open for spawn
                 /*
-                if (spawn.pos.x >= pos.x && spawn.pos.y >= pos.y) {
-                    var door = {x: pos.x + 1, y: pos.y + 1}
-                } else if (spawn.pos.x <= pos.x && spawn.pos.y <= pos.y) {
-                    var door = {x: pos.x - 1, y: pos.y - 1}
-                } else if (spawn.pos.x <= pos.x && spawn.pos.y >= pos.y) {
-                    var door = {x: pos.x - 1, y: pos.y + 1}
-                } else if (spawn.pos.x >= pos.x && spawn.pos.y <= pos.y) {
-                    var door = {x: pos.x + 1, y: pos.y - 1}
+                let path = room.findPath(spawn.pos, pos)
+                if (path.length) {
+                    // path[-1] is the tower positoin, path[-2] is the door
+                    var door = path[path.length - 2]
                 }
+                
                 let area = room.lookAtArea(pos.y-1, pos.x-1, pos.y+1, pos.x+1)
                 _.forEach(area, (row, row_y) => {
                     _.forEach(row, (column, column_x) => {
@@ -314,7 +312,7 @@ var Road = {
                 type: FIND_SOURCES
             }
         },
-        // Spawn to controller
+        // Spawn to controller and tower and extension
         {
             from:{
                 type: FIND_MY_SPAWNS
@@ -322,26 +320,33 @@ var Road = {
             to: {
                 type: FIND_MY_STRUCTURES,
                 filter: (s) => {
-                    return s.structureType == STRUCTURE_CONTROLLER
+                    return (s.structureType == STRUCTURE_CONTROLLER ||
+                        s.structureType == STRUCTURE_TOWER ||
+                        s.structureType == STRUCTURE_EXTENSION)
                 }
             }
         }
     ],
     mark: (spawn) => {
         var room = spawn.room
+        // get the reserved list
+        var cost_matrix = new PathFinder.CostMatrix
+        _.forEach(room.memory.reserve, (r) => {
+            cost_matrix.set(r.x,r.y, 255)
+        })
+        // mark
         _.forEach(Road.PLAN, (r) => {
             let from_list = room.find(r.from.type, r.from)
             let to_list = room.find(r.to.type,r.to)
             _.forEach(from_list, (f) => {
                 _.forEach(to_list, (t) => {
-                    let path = room.findPath(f.pos, t.pos)
+                    // find path but avoid the reserved position
+                    let path = PathFinder.search(f.pos, {pos:t.pos,range:1}, {roomCallback: (rn) => {
+                        return cost_matrix
+                    }}).path
                     _.forEach(path, (p) => {
-                        // do not build road on the target
-                        if (p.x == t.pos.x && p.y == t.pos.y) {
-                            return
-                        }
                         if (room.createConstructionSite(p.x, p.y, STRUCTURE_ROAD) == ERR_FULL){
-                            room.memory.roads_done = false
+                            room.memory.roads_done = 0
                         }
                     })
                 })
@@ -353,7 +358,8 @@ var Road = {
 var BuildPolicy = {
     // build pos should not be close to another building
     CONSTRUCTION_SITES_MAX: 95,
-    CONSTRUCTION_SITES_SAFE_LINE: 90, 
+    CONSTRUCTION_SITES_SAFE_LINE: 50,
+    CHECK_ROAD_EVERY_TICK: 2000,
     
     markSite: (spawn) => {
         var room = spawn.room
@@ -362,16 +368,18 @@ var BuildPolicy = {
             return
         }
 
-        // if road is not designed, mark roads
-        if (!room.memory.roads_done) {
-            room.memory["roads_done"] = true
-            Road.mark(spawn)
-        }
         // if important position has not been reserved, reserve
         if (!room.memory.reserve) {
             room.memory["reserve"] = new Array()
             Tower.reserve(spawn, rcl_capability[rcl_capability.length-1].tower)
         }
+
+        // if road is not designed, mark roads
+        if (!room.memory.roads_done || room.memory.roads_done + BuildPolicy.CHECK_ROAD_EVERY_TICK < Game.time) {
+            room.memory["roads_done"] = Game.time
+            Road.mark(spawn)
+        }
+
         // if rcl increased, mark the build site
         if (!room.memory.rcl || room.memory.rcl != room.controller.level) {
             Extension.mark(spawn)
