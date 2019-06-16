@@ -325,6 +325,18 @@ var Road = {
                         s.structureType == STRUCTURE_EXTENSION)
                 }
             }
+        },
+        // Controller to energy source
+        {
+            from:{
+                type: FIND_MY_STRUCTURES,
+                filter: (s) => {
+                    return (s.structureType == STRUCTURE_CONTROLLER)
+                }
+            },
+            to: {
+                type: FIND_SOURCES,
+            }
         }
     ],
     mark: (spawn) => {
