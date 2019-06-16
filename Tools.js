@@ -23,8 +23,17 @@ var Tools = {
         creep.getActiveBodyparts(RANGED_ATTACK) > 0)
     },
     isPosSafeForBuild: (room, x, y, exception, ignore_reserve = false) => {
-        var area = room.lookAtArea(y-1, x-1, y+1, x+1, true)
+        // check up, down, left, right and center
+        var area = new Array()
         var ret = true
+        // check up, down, left, right and center
+        area = area.concat(room.lookAtArea(y, x-1, y, x-1,true))
+        area = area.concat(room.lookAtArea(y, x+1, y, x+1,true))
+        area = area.concat(room.lookAtArea(y, x, y, x,true))
+        area = area.concat(room.lookAtArea(y-1, x, y-1, x,true))
+        area = area.concat(room.lookAtArea(y+1, x, y+1, x,true))
+
+        log.d(area)
         // if there is exception pos nearby
         _.forEach(area, (a) => {
             // if there are structures nearby except wall or roads, cancel
