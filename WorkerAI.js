@@ -4,6 +4,7 @@ var log = require('Log')
 
 var Harvest = {
     REDUNDANT_RESOUCE_WORKER_MULTIPLY: 1.5,
+    TICK_TO_GEN_LINE : 30,
     cached_list: {},
     getResourceToHarvest: (creep) => {
         var room = creep.room
@@ -39,8 +40,8 @@ var Harvest = {
     },
     run : (creep) => {
         var room = creep.room
+        var resource = null
         if (creep.carry.energy < creep.carryCapacity) {
-            var resource = null
             // go harvest
             creep.memory.status = "working"
             // first time, so assign a resource
@@ -60,17 +61,17 @@ var Harvest = {
                 resource = Game.getObjectById(creep.memory.target_id)
             }
             // got resource, harvest
-            if (resource && resource.energy > 0) {
+            if (resource && (resource.energy > 0 || resource.ticksToRegeneration < Harvest.TICK_TO_GEN_LINE)) {
                 if (creep.harvest(resource) == ERR_NOT_IN_RANGE) {
                     creep.moveTo(resource)
                 }
             } else {
-                creep.memory['target_id'] = null
+                resource = null
             }
             
         }
         // save a tick to do another work
-        if (creep.carry.energy >= creep.carryCapacity)
+        if (creep.carry.energy >= creep.carryCapacity || !resource)
         {
             creep.memory.status = "done"
             if (creep.memory.target_id) {
