@@ -21,7 +21,7 @@ var CreepStyle = {
     getCost : get_cost,
 
     worker: [
-        {
+        /*{
             design: [WORK,WORK,WORK,WORK,WORK,  //500
                 CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,  //450
                 MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE], //550
@@ -34,7 +34,7 @@ var CreepStyle = {
                 MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE], //500
             option: {memory: {role: 'worker', level: 4, status:'done'}},
             level: 4,
-        },
+        },*/
         {
             design: [WORK,WORK,WORK,
                 CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,
