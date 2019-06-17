@@ -9,14 +9,16 @@ var Repair = {
     cached_list: {},
     findStructureToRepair: (tower) => {
         var room = tower.room
-        if (!Repair.cached_list[room.name]) {
-            Repair.cached_list[room.name] =  room.find(FIND_STRUCTURES, {filter: (s) => {
+        if (!Repair.cached_list[room.name] || Repair.cached_list[room.name].tick != Game.tick) {
+            Repair.cached_list[room.name] = {}
+            Repair.cached_list[room.name]["list"] =  room.find(FIND_STRUCTURES, {filter: (s) => {
                 return s.hits < s.hitsMax
             }})
+            Repair.cached_list[room.name]["tick"] = Game.time
         }
         
-        if (Repair.cached_list[room.name].length) {
-            return Repair.cached_list[room.name][0]
+        if (Repair.cached_list[room.name].list.length) {
+            return Repair.cached_list[room.name].list[0]
         } else {
             return null
         }
@@ -28,6 +30,7 @@ var Repair = {
         }
 
         var target = Repair.findStructureToRepair(tower)
+        
 
         if (target) {
             tower.repair(target)

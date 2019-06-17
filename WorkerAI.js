@@ -4,9 +4,19 @@ var log = require('Log')
 
 var Harvest = {
     REDUNDANT_RESOUCE_WORKER_MULTIPLY: 1.5,
+    cached_list: {},
     getResourceToHarvest: (creep) => {
         var room = creep.room
-        var resource_list = creep.room.find(FIND_SOURCES)
+        if (!Harvest.cached_list[room.name] || Harvest.cached_list[room.name].tick != Game.time) {
+            Harvest.cached_list[room.name] = {}
+            var resource_list = creep.room.find(FIND_SOURCES, {filter: (s) => {
+                return s.energy > 0
+            }})
+            Harvest.cached_list[room.name]["list"] = resource_list
+            Harvest.cached_list[room.name]["tick"] = Game.time
+        } else {
+            var resource_list = Harvest.cached_list[room.name].list
+        }
         if (resource_list.length > 0) {
             for (var no in resource_list) {
                 var resource = resource_list[no]
@@ -50,10 +60,12 @@ var Harvest = {
                 resource = Game.getObjectById(creep.memory.target_id)
             }
             // got resource, harvest
-            if (resource) {
+            if (resource && resource.energy > 0) {
                 if (creep.harvest(resource) == ERR_NOT_IN_RANGE) {
                     creep.moveTo(resource)
                 }
+            } else {
+                creep.memory['target_id'] = null
             }
             
         }
@@ -65,7 +77,7 @@ var Harvest = {
                 var resource = Game.getObjectById(creep.memory.target_id)
                 // remove this creep from resourcing worker list, so that other workers can harvest it
                 Set.remove(room.memory.resources[resource.id].worker_id_list,creep.id)
-                delete creep.memory['target_id']
+                creep.memory['target_id'] = null
             }
         }
     },
@@ -73,11 +85,13 @@ var Harvest = {
 }
 
 var Fill = {
+    TOWER_FILL_LINE: 0.9,
     getContainerToFill: (creep) => {
         var container_list = creep.room.find(FIND_MY_STRUCTURES, {filter:(s)=>{
-            return (s.structureType == STRUCTURE_SPAWN ||
-                    s.structureType == STRUCTURE_EXTENSION ||
-                    s.structureType == STRUCTURE_TOWER) && s.energy < s.energyCapacity
+            return ((s.structureType == STRUCTURE_SPAWN ||
+                    s.structureType == STRUCTURE_EXTENSION) && s.energy < s.energyCapacity) ||
+                    // Fill tower only if tower energy is lower than fill line
+                    ((s.structureType == STRUCTURE_TOWER) && s.energy < s.energyCapacity * Fill.TOWER_FILL_LINE)
         }})
         if (container_list.length)
             return container_list[0]
@@ -277,11 +291,12 @@ var priority_list = [
     Harvest,
     Maintain,
     Fill,
-    new Repair(4000,2000),
+    // let's repair by tower
+    //new Repair(4000,2000),
     Build,
-    new Repair(5000,3000),
+    //new Repair(5000,3000),
     Update,
-    new Repair(300 * 1000 * 1000),
+    //new Repair(300 * 1000 * 1000),
 ]
 
 var WorkerAI = {
@@ -290,9 +305,17 @@ var WorkerAI = {
         if (creep.memory.role != 'worker') {
             return;
         }
+        // 
+
         // if previous work has not done, continue
         if (creep.memory.status != 'done') {
-            priority_list[creep.memory.working].run(creep)
+            if (creep.memory.working < priority_list.length) {
+                priority_list[creep.memory.working].run(creep)
+            }
+            else {
+                creep.memory.working = 0
+                creep.target_id = null
+            }
         }
         // if done, find a new work
         if (creep.memory.status == 'done')

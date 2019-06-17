@@ -22,21 +22,50 @@ var CreepStyle = {
 
     worker: [
         {
-            design: [WORK,WORK,WORK,CARRY,CARRY,CARRY,CARRY,MOVE,MOVE,MOVE,MOVE,MOVE],
+            design: [WORK,WORK,WORK,WORK,WORK,  //500
+                CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,  //450
+                MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE], //550
+            option: {memory: {role: 'worker', level: 5, status:'done'}},
+            level: 5,
+        },
+        {
+            design: [WORK,WORK,WORK,WORK, //400
+                CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,  //400
+                MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE], //500
+            option: {memory: {role: 'worker', level: 4, status:'done'}},
+            level: 4,
+        },
+        {
+            design: [WORK,WORK,WORK,
+                CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,
+                MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE],
             option: {memory: {role: 'worker', level: 3, status:'done'}},
             level: 3,
         },
         {
-            design: [WORK,WORK,CARRY,CARRY,CARRY,MOVE,MOVE,MOVE],
-            option: {memory: {role: 'worker', level: 2, status:'done'}},
+            design: [WORK,WORK,WORK,CARRY,CARRY,CARRY,CARRY,MOVE,MOVE,MOVE,MOVE,MOVE],
+            option: {memory: {role: 'worker', level: 1, status:'done'}},
             level: 2,
         },
         {
-            design: [WORK, CARRY, MOVE, MOVE],
+            design: [WORK,WORK,CARRY,CARRY,CARRY,MOVE,MOVE,MOVE],
             option: {memory: {role: 'worker', level: 1, status:'done'}},
             level: 1,
         },
+        {
+            design: [WORK, CARRY, MOVE, MOVE],
+            option: {memory: {role: 'worker', level: 0, status:'done'}},
+            level: 0,
+        },
     ],
+    getPartNum: (design, part) => {
+        var ret = 0
+        _.forEach(design, (p) => {
+            if (p == part)
+                ret ++
+        })
+        return ret
+    },
 }
 
 
