@@ -44,7 +44,7 @@ var CreepStyle = {
         },
         {
             design: [WORK,WORK,WORK,CARRY,CARRY,CARRY,CARRY,MOVE,MOVE,MOVE,MOVE,MOVE],
-            option: {memory: {role: 'worker', level: 1, status:'done'}},
+            option: {memory: {role: 'worker', level: 2, status:'done'}},
             level: 2,
         },
         {
