@@ -5,11 +5,13 @@ var log = require("Log")
 
 var EnvRoom = {
     initResource: (room) => {
-        var resouce_list = room.find(FIND_SOURCES)
-        
         if (!room.memory.resources) {
             room.memory["resources"] = {}
+        } else {
+            // this room has been inited
+            return
         }
+        var resouce_list = room.find(FIND_SOURCES)
         if (Tools.count(room.memory.resources) < resouce_list.length){
             _.forEach(resouce_list, (r) => {
                 //log.d(r.id)
@@ -30,7 +32,7 @@ var EnvRoom = {
             }
             r["max_worker"] = open_area
         })
-    }
+    },
 }
 
 var Environment = {
@@ -57,7 +59,10 @@ var Environment = {
     },
     // to do some modification on memorys, just do once when triggered
     reinit: () => {
-        // build worker limit
+        
+        
+    },
+    check: () => {
         _.forEach(Game.rooms, (room, room_name) => {
             EnvRoom.initResource(room)
         })  
@@ -70,6 +75,7 @@ var Environment = {
                 Environment.reinit()
                 Memory.global["reinit"] = false
             }
+            Environment.check()
             Environment.clean()
             return
         }

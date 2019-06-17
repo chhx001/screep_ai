@@ -49,7 +49,11 @@ var TowerPolicy = {
         var enemy = BattlePolicy.findEnemy(tower)
         if (enemy) {
             tower.attack(enemy)
+            // so we attacked an enemy
+            return true
         }
+        // there isn't an enemy
+        return false
     }
 }
 
