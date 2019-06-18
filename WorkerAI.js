@@ -3,7 +3,7 @@ var Route = require('Route')
 var log = require('Log')
 
 var Harvest = {
-    REDUNDANT_RESOUCE_WORKER_MULTIPLY: 1.5,
+    REDUNDANT_RESOUCE_WORKER_MULTIPLY: 1.25,
     TICK_TO_GEN_LINE : 30,
     cached_list: {},
     getResourceToHarvest: (creep) => {
