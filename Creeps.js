@@ -1,9 +1,11 @@
-logger = require("Logger.js")
+Logger = require("Logger.js")
 
 class WorkerCreep {
     constructor(name) {
         this.creep = Game.creeps[name]
     }
+
+    
 
 }
 
