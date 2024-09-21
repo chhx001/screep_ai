@@ -1,0 +1,79 @@
+module.exports = {
+    MODULE_NAME:String = "Opcodes",
+    VERSION:Number = 1,
+
+    OP_ID_CLEAR_ALL_CACHE:Number = 0x0,
+    OP_ID_DEBUG_PRINT:Number = 0x1,
+    
+    /* SPAWN OP */
+    OP_ID_SPAWN_IDLE:Number = 0x2000,
+    OP_ID_SPAWN_SPAWN:Number = 0x1001,
+    OP_ID_SPAWN_RENEW:Number = 0x1002,
+    OP_ID_SPAWN_RECYCLE:Number = 0x1003,
+
+    /* CREEP OP */
+    OP_ID_CREEP_IDLE:Number = 0x2000,
+    OP_ID_CREEP_HARVEST:Number = 0x2001,
+    OP_ID_CREEP_TRANSFER:Number = 0x2002,
+    OP_ID_CREEP_BUILD:Number = 0x2003,
+    OP_ID_CREEP_UPGRADE:Number = 0x2004,
+    OP_ID_CREEP_MOVE:Number = 0x2005,
+    OP_ID_CREEP_ATTACK:Number = 0x2006,
+    OP_ID_CREEP_HEAL:Number = 0x2007,
+    OP_ID_CREEP_REPAIR:Number = 0x2008,
+    OP_ID_CREEP_RANGE_ATTACK:Number = 0x2009,
+    OP_ID_CREEP_RANGE_HEAD:Number = 0x200a,
+
+    /* TOWER OP */
+    OP_ID_TOWER_IDLE:Number = 0x3000,
+    OP_ID_TOWER_REPAIR:Number = 0x3001,
+    OP_ID_TOWER_ATTACK:Number = 0x3002,
+    OP_ID_TOWER_HEAL:Number = 0x3003,
+
+    /* STRATEGY OP */
+    OP_ID_STRATEGY_DISPATCH_CREEP_JOB:Number = 0x100001,
+    OP_ID_STRATEGY_DISPATCH_SPAWN_JOB:Number = 0x100002,
+    
+
+    OP_STR_LIST:Array = [
+        [OP_ID_CLEAR_ALL_CACHE] = "OP_ID_CLEAR_ALL_CACHE"
+        [OP_ID_DEBUG_PRINT] = "OP_ID_DEBUG_PRINT"
+        
+        /* SPAWN OP */
+        [OP_ID_SPAWN_IDLE] = "OP_ID_SPAWN_IDLE"
+        [OP_ID_SPAWN_SPAWN] = "OP_ID_SPAWN_SPAWN"
+        [OP_ID_SPAWN_RENEW] = "OP_ID_SPAWN_RENEW"
+        [OP_ID_SPAWN_RECYCLE] = "OP_ID_SPAWN_RECYCLE"
+
+        /* CREEP OP */
+        [OP_ID_CREEP_IDLE] = "OP_ID_CREEP_IDLE"
+        [OP_ID_CREEP_HARVEST] = "OP_ID_CREEP_HARVEST"
+        [OP_ID_CREEP_TRANSFER] = "OP_ID_CREEP_TRANSFER"
+        [OP_ID_CREEP_BUILD] = "OP_ID_CREEP_BUILD"
+        [OP_ID_CREEP_UPGRADE] = "OP_ID_CREEP_UPGRADE"
+        [OP_ID_CREEP_MOVE] = "OP_ID_CREEP_MOVE"
+        [OP_ID_CREEP_ATTACK] = "OP_ID_CREEP_ATTACK"
+        [OP_ID_CREEP_HEAL] = "OP_ID_CREEP_HEAL"
+        [OP_ID_CREEP_REPAIR] = "OP_ID_CREEP_REPAIR"
+        [OP_ID_CREEP_RANGE_ATTACK] = "OP_ID_CREEP_RANGE_ATTACK"
+        [OP_ID_CREEP_RANGE_HEAD] = "OP_ID_CREEP_RANGE_HEAD"
+
+        /* TOWER OP */
+        [OP_ID_TOWER_IDLE] = "OP_ID_TOWER_IDLE"
+        [OP_ID_TOWER_REPAIR] = "OP_ID_TOWER_REPAIR"
+        [OP_ID_TOWER_ATTACK] = "OP_ID_TOWER_ATTACK"
+        [OP_ID_TOWER_HEAL] = "OP_ID_TOWER_HEAL"
+
+        /* STRATEGY OP */
+        [OP_ID_STRATEGY_DISPATCH_CREEP_JOB] = "OP_ID_STRATEGY_DISPATCH_CREEP_JOB"
+        [OP_ID_STRATEGY_DISPATCH_SPAWN_JOB] = "OP_ID_STRATEGY_DISPATCH_SPAWN_JOB"
+    ],
+    
+    to_str(op) {
+        if (op < this.OP_STR_LIST.length)
+            return this.OP_STR_LIST[task_id];
+        else
+            return String.valueOf(event);
+    }
+
+}

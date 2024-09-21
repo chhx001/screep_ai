@@ -1,7 +1,7 @@
 var logger = require("Logger.js");
 
 module.exports = {
-    MODULE_NAME:String = "EventQueue",
+    MODULE_NAME:String = "CommandExecutor",
     VERSION:Number = 1,
     MAX_LEVEL:Number = 3,
     /* priority levels */
@@ -15,15 +15,15 @@ module.exports = {
     ],
 
     need_init_memory() {
-        if (Memory.user.eq == undefined || Memory.user.eq.version == undefined || Memory.user.eq.version < this.VERSION)
+        if (Memory.user.cmd == undefined || Memory.user.cmd.version == undefined || Memory.user.cmd.version < this.VERSION)
             return true;
         return false;
     },
 
     init_memory() {
         if (this.need_init_memory()) {
-            Memory.user.eq = {}
-            Memory.user.eq.version = 0;
+            Memory.user.cmd = {}
+            Memory.user.cmd.version = 0;
             Memory.user.eq.queues = [];
             for (var i = 0; i < this.QUEUE_CONFIG.length; i ++) {
                 Memory.user.eq.queues[i] = {
@@ -33,7 +33,7 @@ module.exports = {
                     size:Number = this.QUEUE_CONFIG[i].length,
                 }
             }
-            Memory.user.eq.version = VERSION;
+            Memory.user.cmd.version = VERSION;
         }
     },
 

@@ -20,7 +20,7 @@ module.exports = {
             Memory.user.logger = {}
             Memory.user.logger.version = 0;
             Memory.user.logger.log_level = this.DEFAULT_LEVEL;
-            Memory.user.eq.version = VERSION;
+            Memory.user.logger.version = VERSION;
         }
     },
 
