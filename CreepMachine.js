@@ -9,6 +9,7 @@ const CreepOp = {
     CREEP_OPCODE_HARVEST         : 0x1001,
     CREEP_OPCODE_TRANSFER        : 0x1002,
     CREEP_OPCODE_UPGRADE         : 0x1003,
+    CREEP_OPCODE_BUILD           : 0x1004,
 
     generate(opcode, params) {
         var ret = {}
@@ -45,10 +46,11 @@ class WorkerMachine {
 
     static schedule(creep) {
         /* TODO: Renew */
+        var target_list;
         Logger.debug(creep, "idle")
         /* if empty go harvest */
         if (creep.obj.store.getUsedCapacity() == 0) {
-            var target_list = creep.obj.room.find(FIND_SOURCES_ACTIVE)
+            target_list = creep.obj.room.find(FIND_SOURCES_ACTIVE)
             if (target_list.length > 0) {
                 target_id_list = _.map(target_list, (t)=>{return t.id})
                 var op = CreepOp.generate(CreepOp.CREEP_OPCODE_HARVEST, {target_id_list:target_id_list})
@@ -59,12 +61,11 @@ class WorkerMachine {
         
         if (creep.obj.store.getUsedCapacity(RESOURCE_ENERGY) > 0){
             /* any source storage transfer?*/
-            var filter_store = (structure) => {
+            var filter = (structure) => {
                 return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
                     structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
             }
-            var find_type = FIND_MY_STRUCTURES;
-            var target_list = creep.obj.room.find(find_type, {filter: filter_store});
+            target_list = creep.obj.room.find(FIND_MY_STRUCTURES, {filter: filter});
             if (target_list.length > 0) {
                 var target_id_list = _.map(target_list, (t)=>{return t.id})
                 var op = CreepOp.generate(CreepOp.CREEP_OPCODE_TRANSFER, {
@@ -75,21 +76,30 @@ class WorkerMachine {
             }
 
             /* TODO: build */
-
-            /* upgrade */
-            
-            var op = CreepOp.generate(CreepOp.CREEP_OPCODE_UPGRADE, {})
-            creep.pq.push(op, 0)
-            return OP_AGAIN_NEXT
+            if (creep.obj.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+                target_list = creep.obj.room.find(FIND_MY_CONSTRUCTION_SITES)
+                if (target_list.length > 0) {
+                    var target_id_list = _.map(target_list, (t)=>{return t.id})
+                    var op = CreepOp.generate(CreepOp.CREEP_OPCODE_BUILD, {
+                        target_id_list: target_id_list});
+                    creep.pq.push(op, 0)
+                    return OP_AGAIN_NEXT
+                }
+                /* upgrade */
+                
+                var op = CreepOp.generate(CreepOp.CREEP_OPCODE_UPGRADE, {})
+                creep.pq.push(op, 0)
+                return OP_AGAIN_NEXT
+            }
 
         }
-
+        creep.obj.say("Idle")
         return OP_DONE;
     }
 
     static harvest(creep, op) {
         Logger.debug(creep, "harvest")
-        creep.obj.say("harvest")
+        creep.obj.say("Harvest")
         if (creep.obj.store.getFreeCapacity() > 0) {
             /* confirm the target */
             var target;
@@ -143,7 +153,7 @@ class WorkerMachine {
 
     static transfer(creep, op) {
         Logger.debug(creep, "transfer")
-        creep.obj.say("transfer")
+        creep.obj.say("Transfer")
         if (creep.obj.store.getUsedCapacity(op.resource_type) > 0) {
             if (op.target_id == undefined) {
                 /* hash it by time */
@@ -179,7 +189,7 @@ class WorkerMachine {
 
     static upgrade(creep, op) {
         Logger.debug(creep, "upgrade");
-        creep.obj.say("upgrade")
+        creep.obj.say("Upgrade")
         if (creep.obj.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
             var target = creep.obj.room.controller
             if (op.target_id == undefined)
@@ -191,6 +201,41 @@ class WorkerMachine {
             }
             return OP_DONE;
         } else {
+            creep.pq.pop();
+            return OP_AGAIN_NEXT;
+        }
+    }
+
+    static build(creep, op) {
+        Logger.debug(creep, "build")
+        creep.obj.say("Build")
+        if (creep.obj.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+            if (op.target_id == undefined) {
+                /* hash it by time, random pick one */
+                op.target_id = op.target_id_list[(Game.time % op.target_id_list.length)]
+                CreepOp.op_assign_move(creep, op, op.target_id);
+            }
+
+            var target = Game.getObjectById(op.target_id)
+            if (!target) {
+                /* site is gone, build over */
+                creep.pq.pop();
+                return OP_AGAIN_NEXT;
+            }
+            var r = creep.obj.build(target)
+            if (r == ERR_NOT_IN_RANGE) {
+                return WorkerMachine.move(creep, op)
+            } else if (r == ERR_INVALID_TARGET) {
+                /* cancel this target, try again */
+                creep.pq.pop();
+                return OP_AGAIN_NEXT;
+            }else if (r != OK) {
+                Logger.warn(creep, "Transfer return undefined error code: " + r + " target_id=" + op.target_id)
+            }
+
+            return OP_DONE;
+        } else {
+            /* if no target, pop*/
             creep.pq.pop();
             return OP_AGAIN_NEXT;
         }
@@ -217,6 +262,8 @@ class WorkerMachine {
                     case CreepOp.CREEP_OPCODE_UPGRADE:
                         cycle +=WorkerMachine.upgrade(creep, op)
                         break;
+                    case CreepOp.CREEP_OPCODE_BUILD:
+                        cycle +=WorkerMachine.build(creep, op)
                     default:
                         Logger.warn(creep, "Unknown opcode " + op.id)
                         break;

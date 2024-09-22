@@ -77,7 +77,7 @@ class SpawnClass {
             var creep_name = NameGen.gen(CreepTypes.WORKER.name)
             var r = this.obj.spawnCreep(WorkerDesigner.generate(room.energyAvailable), creep_name, {memory:{user:{type:CreepTypes.WORKER.name}}});
             if (r) {
-                Logger.error(this, "Spawn failed, err=" + r);
+                Logger.warn(this, "Spawn failed, err=" + r);
             } else {
                 Logger.info(this, "Spawning Creep " + creep_name)
             }
