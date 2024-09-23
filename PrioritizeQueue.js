@@ -65,7 +65,9 @@ class RingBuffer {
             Logger.warn(this, "RingBuffer empty when popping, drop....")
         }
         var ret = this.top()
+        var rptr = this.rptr
         this.rptr ++
+        this.queue[rptr % this.size].content = {}   /* remove content to save memory */
         this.dirty = true
         return ret
     }

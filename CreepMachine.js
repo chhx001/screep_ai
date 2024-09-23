@@ -291,7 +291,7 @@ const CreepClassOptions = {
     MODULE_NAME : "CreepClass",
     VERSION : 1,
     max_queue_priority : 1,
-    queue_size_list : [3],
+    queue_size_list : [2],
 }
 
 const CreepTypes = {
