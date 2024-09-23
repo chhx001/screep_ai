@@ -337,6 +337,13 @@ class CreepClass {
         this.obj.memory.user.type = this.type
     }
 
+    schedule() {
+        if (!this.obj.spawning) {
+            this.machine.schedule(this);
+            this.pq.save();
+        }
+    }
+
     run() {
         if (!this.obj.spawning) {
             this.machine.run(this);

@@ -1,6 +1,6 @@
 const Logger = require("./Logger")
 const PrioritizedQueue = require("./PrioritizeQueue");
-const { CpuManager } = require("./SystemManager");
+const { CpuManager } = require("./CpuManager");
 
 const OP_DONE = 0;
 const OP_AGAIN_NEXT = 1;
