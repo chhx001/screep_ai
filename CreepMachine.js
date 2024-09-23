@@ -75,18 +75,18 @@ class WorkerMachine {
                 return OP_AGAIN_NEXT
             }
 
-            /* TODO: build */
+            /* TODO: build, alway closet*/
             if (creep.obj.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
-                target_list = creep.obj.room.find(FIND_MY_CONSTRUCTION_SITES)
-                if (target_list.length > 0) {
-                    var target_id_list = _.map(target_list, (t)=>{return t.id})
+                var target = creep.obj.pos.findClosestByRange(FIND_MY_CONSTRUCTION_SITES)
+                if (target) {
+                    var target_id_list = [target.id]
                     var op = CreepOp.generate(CreepOp.CREEP_OPCODE_BUILD, {
                         target_id_list: target_id_list});
                     creep.pq.push(op, 0)
                     return OP_AGAIN_NEXT
                 }
+
                 /* upgrade */
-                
                 var op = CreepOp.generate(CreepOp.CREEP_OPCODE_UPGRADE, {})
                 creep.pq.push(op, 0)
                 return OP_AGAIN_NEXT
@@ -264,8 +264,10 @@ class WorkerMachine {
                         break;
                     case CreepOp.CREEP_OPCODE_BUILD:
                         cycle +=WorkerMachine.build(creep, op)
+                        break;
                     default:
-                        Logger.warn(creep, "Unknown opcode " + op.id)
+                        Logger.warn(creep, "Unknown opcode " + op.code)
+                        creep.pq.pop()
                         break;
                 }
             }

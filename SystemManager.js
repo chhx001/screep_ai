@@ -1,7 +1,6 @@
-const { BuildPlanner } = require("./BuildPlanner");
 const { CreepClass } = require("./CreepMachine");
 const Logger = require("./Logger");
-const { RoomSummary } = require("./RoomSummary");
+const { RoomPlanner } = require("./RoomPlanner");
 const { SpawnClass } = require("./SpawnMachine");
 
 
@@ -19,7 +18,7 @@ const GCWorker = {
 
     report_next_gc_time(time) {
         /* static GC timging */
-        if (Memory.user.gc.next_gc_time > time)
+        if (Memory.user.gc.next_gc_time < time)
             Memory.user.gc.next_gc_time = time;
     },
 
@@ -36,8 +35,10 @@ const GCWorker = {
             if (!Game.creeps[name])
                 delete Memory.creeps[name]
         }
+        /* delete debugging temp */
+        delete Memory.user.temp
 
-        this.report_next_gc_time(Game.time + 100)
+        this.report_next_gc_time(Game.time + 500)
     },
 }
 
@@ -70,14 +71,15 @@ const Scheduler = {
         for (var i in spawn_list) {
             var spawn = spawn_list[i]
             /* scan room of this spawn */
-            RoomSummary.scan(spawn.obj.room.name)
+            var planner = new RoomPlanner(spawn.obj.room.name)
+            planner.scan()
             spawn.run();
             var creep_list = Scheduler.scan_creeps(spawn.obj.room);
             for (var j in creep_list) {
                 var creep = creep_list[j]
                 creep.run()
             }
-            BuildPlanner.plan_for(spawn.obj.room.name)
+            planner.plan()
         }
     },
 }
@@ -117,6 +119,7 @@ const SystemManager = {
             Logger._log("BUG! Stop...")
             return;
         }
+        GCWorker.run();
         Scheduler.schedule();
     },
     /* Memory Init */
