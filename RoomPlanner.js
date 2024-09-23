@@ -54,16 +54,19 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
     }
 
     check_for_roads_replan() {
+        
         if (this.room.memory.user.maintain.roads == undefined || this.force_scan) {
             this.roads_count = 0;
             this.room.memory.user.maintain.roads = {count:0, next_tick:0}
             return true
         }
+        var roads_count = 0
         /* Scheduled rescan time */
         if (this.room.memory.user.maintain.roads.next_tick <= Game.time) {
             /* rescan to see if need replan */
-            this.roads_count += this.room.find(FIND_MY_STRUCTURES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}}).length
-            this.roads_count += this.room.find(FIND_MY_CONSTRUCTION_SITES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}}).length
+            
+            roads_count += this.room.find(FIND_MY_STRUCTURES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}}).length
+            roads_count += this.room.find(FIND_MY_CONSTRUCTION_SITES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}}).length
             if (this.roads_count < this.room.memory.user.maintain.roads) {
                 /* actual road is lesser than road in this room */
                 return true
@@ -80,8 +83,9 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
         }
 
         /* this one only used here */
-        var get_cost_matrix = function(room_name, cost_matrix) {
-            var room = Game.room_name;
+        var get_cost_matrix = function(room, cost_matrix) {
+            //var room = Game.rooms[room_name];
+            //console.log(room_name)
             var road_sites = room.find(FIND_MY_CONSTRUCTION_SITES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}})
             for (var k = 0; k < road_sites.length; k ++) {
                 cost_matrix.set(road_sites[k].pos.x, road_sites[k].pos.y, 0.5)
@@ -99,7 +103,6 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             for (var i = 0; i < spawn_list.length; i ++) {
                 var source = Game.getObjectById(source_id)
                 /* costmatrix, make road construction site as road */
-                var cost_matrix = get_cost_matrix(this.room)
                 var path = this.room.findPath(spawn_list[i].pos, source.pos, {ignoreCreeps:1, costMatrix:get_cost_matrix, range:1})
                 for (var k = 0; k < path.length; k ++) {
                     this.construct_road(path[k].x, path[k].y, construction_param);
@@ -119,7 +122,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
                 this.construct_road(path[k].x, path[k].y, construction_param);
             }
         }
-        this.room.memory.user.maintain.roads.count = this.count;
+        this.room.memory.user.maintain.roads.count = this.roads_count;
         this.room.memory.user.maintain.roads.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL
     }
 
