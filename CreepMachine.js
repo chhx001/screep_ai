@@ -44,7 +44,7 @@ class UnknownMachine {
 
 class WorkerMachine {
 
-    static schedule(creep) {
+    static do_schedule(creep) {
         /* TODO: Renew */
         var target_list;
         Logger.debug(creep, "idle")
@@ -241,13 +241,21 @@ class WorkerMachine {
         }
     }
 
+    static schedule(creep) {
+        var op = creep.pq.top();
+        if (op == null) {
+            WorkerMachine.do_schedule(creep)
+        }
+    }
+
     static run(creep) {
         var cycle = 1;  /* how many loops left */
         var barrer = 10
         while (cycle -- && barrer --) {
             var op = creep.pq.top()
             if (op == null) {
-                cycle +=  WorkerMachine.schedule(creep)
+                /* reschedule */
+                cycle +=  WorkerMachine.do_schedule(creep)
             } else {
                 switch(op.code) {
                     case CreepOp.CREEP_OPCODE_MOVE:
