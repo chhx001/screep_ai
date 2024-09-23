@@ -1,6 +1,7 @@
 const { BuildPlanner } = require("./BuildPlanner");
 const { CreepClass } = require("./CreepMachine");
 const Logger = require("./Logger");
+const { RoomSummary } = require("./RoomSummary");
 const { SpawnClass } = require("./SpawnMachine");
 
 
@@ -68,6 +69,8 @@ const Scheduler = {
         var spawn_list = Scheduler.scan_spawns();
         for (var i in spawn_list) {
             var spawn = spawn_list[i]
+            /* scan room of this spawn */
+            RoomSummary.scan(spawn.obj.room.name)
             spawn.run();
             var creep_list = Scheduler.scan_creeps(spawn.obj.room);
             for (var j in creep_list) {
