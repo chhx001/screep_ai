@@ -127,25 +127,33 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
         }
     }
 
-    check_for_roads_replan() {
-        if (this.room.memory.user.maintain.roads == undefined || this.force_scan) {
-            this.room.memory.user.maintain.roads = {count:0, next_tick:0}
-            return true
-        }
+    check_for_replan(structure_type, find_structure, find_construction_site, memory_entry) {
         /* Scheduled rescan time */
-        var roads_count = 0
-        if (this.room.memory.user.maintain.roads.next_tick <= Game.time) {
+        var count = 0
+        if (memory_entry.next_tick <= Game.time) {
             /* rescan to see if need replan */
-            roads_count += this.room.find(FIND_STRUCTURES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}}).length
-            roads_count += this.room.find(FIND_MY_CONSTRUCTION_SITES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}}).length
-            if (roads_count != this.room.memory.user.maintain.roads.count) {
+            Memory.user.cache = structure_type
+            count += this.room.find(find_structure, {filter: (s) => {return (s.structureType == Memory.user.cache)}}).length
+            count += this.room.find(find_construction_site, {filter: (s) => {return (s.structureType == Memory.user.cache)}}).length
+            if (count != memory_entry.count) {
                 /* actual road is lesser than road in this room */
-                this.room.memory.user.maintain.roads.count = roads_count;
+                memory_entry.count = count;
+                memory_entry.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL;
                 return true
             }
         }
 
         return false
+    }
+
+    cache_site(x, y, structure_type) {
+        /* if already built, skip*/
+        var site_cache = this.room.memory.user.site_cache
+
+        if (site_cache[x] == undefined) {
+            site_cache[x] = {}
+        }
+        site_cache[x][y] = structure_type
     }
 
     cache_road_site(x, y, param = {}) {
@@ -219,9 +227,10 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
     }
 
     schedule_plan_roads() {
-        if (!this.check_for_roads_replan()) {
-            /* doesn't need replan */
-            this.room.memory.user.maintain.roads.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL
+        if (this.room.memory.user.maintain.roads == undefined || this.force_scan) {
+            this.room.memory.user.maintain.roads = {count:-1, next_tick:0}
+        }
+        if (!this.check_for_replan(STRUCTURE_ROAD, FIND_STRUCTURES, FIND_MY_CONSTRUCTION_SITES, this.room.memory.user.maintain.roads)) {
             return
         }
 
@@ -249,24 +258,90 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             var controller = this.room.controller;
             this.submit_road_plan_task(controller.pos.x, controller.pos.y, source.pos.x, source.pos.y)
         }
-        this.room.memory.user.maintain.roads.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL
     }
 
     schedule_plan_container() {
-        /* container to settle after all plan done */
+        /* container to settle after all other plan done */
         if (this.pq.top()) return;
-        /* container to settle after all roads done */
-        var roads_site_list = room.find(FIND_MY_CONSTRUCTION_SITES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}})
-        if (roads_site_list.length > 0) return;
+
+        if (this.room.memory.user.maintain.containers == undefined || this.force_scan) {
+            this.room.memory.user.maintain.containers = {count:-1, next_tick:0}
+        }
+        if (!this.check_for_replan(STRUCTURE_CONTAINER, FIND_MY_STRUCTURES, FIND_MY_CONSTRUCTION_SITES, this.room.memory.user.maintain.containers)) {
+            /* doesn't need replan */
+            return
+        }
+
         /* if every resource has assigned container and it exists, skip */
         var source_dict = this.room.memory.user.resources.sources.dict
         for (var src_id in source_dict) {
             if (source_dict[src_id].container_id == undefined || (!Game.getObjectById(source_dict[src_id].container_id))) {
                 /* plan for this source */
-                var source = Game.getObjectById(source_dict[src_id])
+                var source = Game.getObjectById(src_id)
+                /* find a place, which distance_to_source=2, terrain is plain or swamp, no source/mineral and structure(except road) in distance1 */
+                var terrain = new Room.Terrain(this.room.name)
+                var best_position = null
+                var best_stance_weight = Infinity
+                
+                for (var y = source.pos.y - 2; y <= source.pos.y + 2; y ++) {
+                    for (var x = source.pos.x - 2; x <= source.pos.x + 2; x ++) {
+                        var room_pos = this.room.getPositionAt(x, y)
+                        if (terrain.get(x,y) != TERRAIN_MASK_WALL && room_pos.getRangeTo(source) == 2) {
+                            /* see if any source/mineral or structure besides */
+                            /* find structures, road is not my_structures so it is already filtered */
+                            if (room_pos.findInRange(FIND_MY_STRUCTURES, 1).length > 0)
+                                continue;   /* skip */
+                            /* construction site except road */
+                            if (room_pos.findInRange(FIND_MY_CONSTRUCTION_SITES, 1, {filter:(s)=>{return (s.structureType != STRUCTURE_ROAD)}}).length > 0)
+                                continue;
+                            /* source */
+                            if (room_pos.findInRange(FIND_SOURCES, 1).length > 0)
+                                continue;
+                            /* minerals */
+                            if (room_pos.findInRange(FIND_MINERALS, 1).length > 0)
+                                continue;
 
+                            /* corner case check, don't put at dead end, the container to controller have a path which won't step into the source stance*/
+                            Memory.user.cache = src_id  /* cache src_id */
+                            var res = PathFinder.search(room_pos, {pos:this.room.controller.pos, range:1}, {
+                                /* maxCost < 0xff, so it can't walk thorugh stances, maxOps is low, we don't need to find so far */
+                                plainCost: 1, swampCost:1, maxCost:0xfe, maxOps:100,
+                                roomCallback:(room_name) => {
+                                    var room = Game.rooms[room_name]
+                                    var costs = new PathFinder.CostMatrix;
+                                    var source_data = room.memory.user.resources.sources.dict
+                                    var src_id = Memory.user.cache
+                                    for (var i = 0; i < source_data[src_id].stances.length; i ++) {
+                                        /* avoid stances */
+                                        costs.set(source_data[src_id].stances[i].x, source_data[src_id].stances[i].y, 0xff)
+                                    }
+                                }
+                            })
+                            /* can't find such a path, and the cloest path is quite short, then we don't use this position*/
+                            if (res.incomplete && res.path.length <= 5)
+                                continue;
 
+                            /* get the total weight to the stances, finally we will pick on position with */
+                            var weight = 0;
+                            for (var i = 0; i < source_dict[src_id].stances.length; i ++)
+                                weight += room_pos.getRangeTo(source_dict[src_id].stances[i].x, source_dict[src_id].stances[i].y)
 
+                            if (best_stance_weight > weight) {
+                                best_stance_weight = weight
+                                best_position = room_pos
+                            }
+                        }
+                    }
+                }
+
+                if (best_position) {
+                    /* OK, this is the place, if there is constuction site already, remove it */
+                    best_position.lookFor(LOOK_CONSTRUCTION_SITES).forEach((site) => {
+                        site.remove();
+                    })
+                    /* cache the site */
+                    this.cache_site(best_position.x, best_position.y, STRUCTURE_CONTAINER)
+                }
             }
         }
 
@@ -277,6 +352,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
     schedule() {
         this.is_new_level();
         this.schedule_plan_roads();
+        this.schedule_plan_container();
         this.room.memory.user.maintain.last_plan_level = this.room.controller.level
     }
 

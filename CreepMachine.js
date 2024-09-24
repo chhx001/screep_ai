@@ -161,7 +161,7 @@ class CreepMachine extends BasicMachine {
             var target = creep.obj.room.controller
             if (op.target_id == undefined) {
                 CreepOp.op_assign_move(creep, op, target.id, 3);
-                op.target_id == target_id
+                op.target_id == target.id
             }
 
             var r = creep.obj.upgradeController(target)

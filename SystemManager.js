@@ -38,6 +38,8 @@ const GCWorker = {
         }
         /* delete debugging temp */
         delete Memory.user.temp
+        /* delete cache */
+        delete Memory.user.cache
 
         this.report_next_gc_time(Game.time + 500)
     },
