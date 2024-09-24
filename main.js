@@ -5,4 +5,4 @@ function stop() {
     //console.log("Stopped");
 }
 
-module.exports.loop =  SystemManager.loop
+module.exports.loop = SystemManager.loop

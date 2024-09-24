@@ -23,17 +23,7 @@ const PlannerOp = {
         }
         ret.code = opcode
         return ret;
-    },
-
-    op_add_new_site(op, x, y, construction_type) {
-        if (op.sites == undefined) {
-            op.sites = {}
-        }
-        if (op.sites[x] == undefined) {
-            op.sites[x] = {}
-        }
-        op.sites[x][y] = construction_type
-    },
+    }
 }
 
 class BuildPlannerLevel0 {
@@ -68,42 +58,51 @@ class BuildPlannerLevel0 {
         }
     }
 
-    flush_construction_site(op) {
+    flush_construction_site(planner, op) {
         var x, y;
-        var site_cache = this.room.memory.user.site_cache
-
+        var r = undefined
+        var site_cache = planner.room.memory.user.site_cache
         if (Object.keys(site_cache).length > 0) {
             for (x in site_cache) {
                 for (y in site_cache[x]) {
-                    this.room.createConstructionSite(x, y, site_cache[x][y])
+                    var r = planner.room.createConstructionSite(Number(x), Number(y), site_cache[x][y])
+                    if (r == ERR_FULL) {/* too many sites, return OK to stop looping, but keep the site */
+                        return OP_DONE
+                    }
+                    break;
                 }
+                if (r != undefined) /* jump out, we just want to book one construct site per tick */
+                    break
             }
             /* remove the settled site */
             delete site_cache[x][y]
             if (Object.keys(site_cache[x]).length == 0)
                 delete site_cache[x]
             if (Object.keys(site_cache).length == 0) {
-                this.pq.pop()
+                planner.pq.pop()
                 return OP_DONE
             } else {
                 return OP_AGAIN_NEXT
             }
         } else {
-            this.pq.pop()
+            planner.pq.pop()
             return OP_DONE
         }
     }
 
-    run(max_cycle=BUILD_PLAN_DEFAULT_MAX_CYCLE) {
+    run(max_cycle=RoomPlannerOption.BUILD_PLAN_DEFAULT_MAX_CYCLE) {
         var op = this.pq.top()
         var ret;
-
+        
         while (op && max_cycle -- && CpuManager.agree()) {
-            for (i = 0; i < this.op_task_map.length; i ++) {
+            for (var i = 0; i < this.op_task_map.length; i ++) {
                 if (op.code == this.op_task_map[i].code) {
-                    ret = this.op_task_map[i].cb(op)
+                    ret = this.op_task_map[i].cb(this, op)
                     break;
                 }
+            }
+            if (ret == OP_DONE) {
+                break;
             }
 
             op = this.pq.top()
@@ -141,7 +140,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             roads_count += this.room.find(FIND_MY_CONSTRUCTION_SITES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}}).length
             if (roads_count != this.room.memory.user.maintain.roads) {
                 /* actual road is lesser than road in this room */
-                this.room.memory.user.maintain.roads = roads_count;
+                this.room.memory.user.maintain.roads.count = roads_count;
                 return true
             }
         }
@@ -167,33 +166,51 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
         if (site_cache[x] == undefined) {
             site_cache[x] = {}
         }
-        site_cache[x][y] = construction_type
+        site_cache[x][y] = STRUCTURE_ROAD
     }
 
     submit_road_plan_task(from_x, from_y, to_x, to_y) {
-        this.pq.push(PlannerOp.generate(PlannerOp.PLANNER_OPCODE_ROAD_PATH, {from: {x: from_x, y:from_y}, to:{x: to_x, y: to_y}}))
-        this.pq.push(PlannerOp.generate(PlannerOp.PLANNER_OPCODE_FLUSH_PLAN, {}))
+        this.pq.push(PlannerOp.generate(PlannerOp.PLANNER_OPCODE_ROAD_PATH, {
+            from: {x: from_x, y:from_y, room_name:this.room_name},
+            to:{x: to_x, y: to_y, room_name:this.room_name}}), 0)
+        this.pq.push(PlannerOp.generate(PlannerOp.PLANNER_OPCODE_FLUSH_PLAN, {}), 0)
     }
 
-    do_road_plan_task(op) {
-        PathFinder.use(true);
+    do_road_plan_task(planner, op) {
         /* overwrite road site cost as built road */
-        var get_cost_matrix = function(room, cost_matrix) {
-            //var room = Game.rooms[room_name];
-            //console.log(room_name)
+        var get_cost_matrix = function(room_name) {
+            var room = Game.rooms[room_name];
             var road_sites = room.find(FIND_MY_CONSTRUCTION_SITES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}})
+            var roads = room.find(FIND_MY_STRUCTURES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}})
+            var cost_matrix = new PathFinder.CostMatrix;
+
+            // ignore_creeps as plains
+            room.find(FIND_CREEPS).forEach(function(creep) {
+                cost_matrix.set(creep.pos.x, creep.pos.y, 2);
+            });
+
+            
             for (var k = 0; k < road_sites.length; k ++) {
-                cost_matrix.set(road_sites[k].pos.x, road_sites[k].pos.y, 0.5)
+                cost_matrix.set(road_sites[k].pos.x, road_sites[k].pos.y, 1)
+            }
+
+            for (var k = 0; k < roads.length; k ++) {
+                cost_matrix.set(roads[k].pos.x, roads[k].pos.y, 1)
             }
             return cost_matrix
         }
-        var from_pos = this.room.getPositionAt(op.from.x, op.from.y)
-        var to_pos = this.room.getPositionAt(op.to.x, op.to.y)
+        
+        var from_pos = new RoomPosition(op.from.x, op.from.y, op.from.room_name)
+        var to_pos = new RoomPosition(op.to.x, op.to.y, op.to.room_name)
 
-        var path = this.room.findPath(from_pos, to_pos, {ignoreCreeps:1, costMatrix:get_cost_matrix, range:1})
+        var find_res = PathFinder.search(from_pos, {pos:to_pos, range:1}, {plainCost: 2,
+            swampCost: 10, roomCallback:get_cost_matrix})
+        var path = find_res.path;
+        console.log("cost:" + find_res.cost)
         for (var k = 0; k < path.length; k ++) {
-            this.cache_road_site(path[k].x, path[k].y)
+            planner.cache_road_site(path[k].x, path[k].y)
         }
+        planner.pq.pop()
         return OP_DONE
 
     }
@@ -214,7 +231,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
         for (var source_id in sources) {
             for (var i = 0; i < spawn_list.length; i ++) {
                 var source = Game.getObjectById(source_id)
-                submit_road_plan_task(spawn_list[i].pos.x, spawn_list[i].pos.y, source.pos.x, source.pos.y)
+                this.submit_road_plan_task(spawn_list[i].pos.x, spawn_list[i].pos.y, source.pos.x, source.pos.y)
                 /* source stance as path */
                 for (var k = 0; k < sources[source_id].stances.length; k ++) {
                     var stance = sources[source_id].stances[k];
@@ -225,7 +242,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
 
             /* source to controller */
             var controller = this.room.controller;
-            submit_road_plan_task(controller.pos.x, controller.pos.y, source.pos.x, source.pos.y)
+            this.submit_road_plan_task(controller.pos.x, controller.pos.y, source.pos.x, source.pos.y)
         }
         this.room.memory.user.maintain.roads.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL
     }
@@ -233,8 +250,10 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
     schedule() {
         this.is_new_level();
         this.schedule_plan_roads();
+        this.pq.save()
         this.room.memory.user.maintain.last_plan_level = this.room.controller.level
     }
+
 }
 
 class BuildPlannerLevel2 extends BuildPlannerLevel1 {
@@ -298,7 +317,6 @@ const BuildPlanner = {
         var planner = new this.planner_list[level](room_name)
         return planner
     }
-
 }
 
 
@@ -361,6 +379,7 @@ class RoomPlanner {
     }
 
     run_build() {
+
         this.planner.run();
     }
 

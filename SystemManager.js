@@ -4,8 +4,6 @@ const Logger = require("./Logger");
 const { RoomPlanner } = require("./RoomPlanner");
 const { SpawnClass } = require("./SpawnMachine");
 
-const MAX_BUCKET = 10000
-
 
 const GCWorker = {
     init() {

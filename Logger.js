@@ -21,7 +21,7 @@ module.exports = {
         if (this.need_init_memory()) {
             Memory.user.logger = {}
             Memory.user.logger.version = 0;
-            Memory.user.logger.log_level = this.DEBUG;
+            Memory.user.logger.log_level = this.INFO;
             Memory.user.logger.bug_on_error = this.BUG_ON_ERROR
             Memory.user.logger.version = this.VERSION;
         }

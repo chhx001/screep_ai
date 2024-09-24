@@ -37,8 +37,12 @@ const CreepOp = {
 
 
 class UnknownMachine {
-    static run() {
-        Logger.warn(this.creep, "I'm unknown, idling...")
+    static run(creep) {
+        Logger._warn(creep, "I'm unknown, idling...")
+    }
+
+    static schedule(creep) {
+
     }
 }
 

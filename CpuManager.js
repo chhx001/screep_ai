@@ -1,4 +1,4 @@
-
+const MAX_BUCKET = 10000
 class CpuManager {
     static init() {
         if (Memory.user.cpu == undefined) {
@@ -13,6 +13,11 @@ class CpuManager {
     static agree() {
         var bucket = Game.cpu.bucket
         var used = Game.cpu.getUsed()
+
+        if(Game.cpu.tickLimit == Infinity) {
+            /* probably simulator, always agree */
+            return true;
+        }
 
         /* blast mode < 95% is good to go, total 500ms, 5% is 25ms */
         if (Memory.user.blast_mode || bucket > MAX_BUCKET * 0.9) {

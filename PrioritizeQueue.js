@@ -128,6 +128,7 @@ module.exports = class PrioritizedQueue {
         }
         rb.push(content)
         this.dirty = true
+        this.save()
     }
 
     top_rb() {
@@ -152,9 +153,11 @@ module.exports = class PrioritizedQueue {
 
     pop() {
         var rb = this.top_rb()
+        var ret;
         if (rb) {
             this.dirty = true
-            return rb.pop()
+            ret = rb.pop()
+            this.save()
         } else
             return null
     }
