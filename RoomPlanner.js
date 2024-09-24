@@ -190,7 +190,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             });
 
             // ignore tombstones
-            room.find(FIND_TOMBSTONE).forEach(function(stone) {
+            room.find(FIND_TOMBSTONES).forEach(function(stone) {
                 cost_matrix.set(stone.pos.x, stone.pos.y, 1);
             });
             
@@ -236,10 +236,11 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             for (var i = 0; i < spawn_list.length; i ++) {
                 var source = Game.getObjectById(source_id)
                 this.submit_road_plan_task(spawn_list[i].pos.x, spawn_list[i].pos.y, source.pos.x, source.pos.y)
-                /* source stance as path */
-                for (var k = 0; k < sources[source_id].stances.length; k ++) {
-                    var stance = sources[source_id].stances[k];
-                    this.cache_road_site(stance.x, stance.y);
+                /* road sourround sources, in range 2 */
+                var mining_park = RoomPlanner.look_for_stance_in_rect(this.room.name, source.pos.x, source.pos.y, 2);
+                for (var k = 0; k < mining_park.length; k ++) {
+                    var park = mining_park[k];
+                    this.cache_road_site(park.x, park.y);
                 } 
                 
             }
@@ -389,7 +390,6 @@ class RoomPlanner {
                 for (var j = 0;j < stance.length; j ++) {
                     stance[j].target_id = source.id
                 }
-                Logger.debug(this, "stance=" + stance.length)
                 this.obj.memory.user.resources.sources.dict[source.id] = {
                     stances: stance
                 }

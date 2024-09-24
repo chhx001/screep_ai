@@ -74,7 +74,7 @@ class CreepMachine extends BasicMachine {
                 }
                 var stance = stance_list[harvest_cnt % stance_list.length]
                 
-                CreepOp.op_assign_move_pos(creep, op, stance.target_id, stance.x, stance.y, creep.obj.room.name);
+                CreepOp.op_assign_move(creep, op, stance.target_id, 1);
                 op.target_id = stance.target_id
                 source_data.harvest_cnt ++
             }
