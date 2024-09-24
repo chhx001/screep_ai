@@ -1,5 +1,5 @@
 const Logger = require("./Logger")
-const PrioritizedQueue = require("./PrioritizeQueue");
+const PrioritizedQueue = require("./PrioritizedQueue");
 const { CpuManager } = require("./CpuManager");
 
 const OP_DONE = 0;
@@ -136,9 +136,9 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
         var roads_count = 0
         if (this.room.memory.user.maintain.roads.next_tick <= Game.time) {
             /* rescan to see if need replan */
-            roads_count += this.room.find(FIND_MY_STRUCTURES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}}).length
+            roads_count += this.room.find(FIND_STRUCTURES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}}).length
             roads_count += this.room.find(FIND_MY_CONSTRUCTION_SITES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}}).length
-            if (roads_count != this.room.memory.user.maintain.roads) {
+            if (roads_count != this.room.memory.user.maintain.roads.count) {
                 /* actual road is lesser than road in this room */
                 this.room.memory.user.maintain.roads.count = roads_count;
                 return true
@@ -186,9 +186,13 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
 
             // ignore_creeps as plains
             room.find(FIND_CREEPS).forEach(function(creep) {
-                cost_matrix.set(creep.pos.x, creep.pos.y, 2);
+                cost_matrix.set(creep.pos.x, creep.pos.y, 1);
             });
 
+            // ignore tombstones
+            room.find(FIND_TOMBSTONE).forEach(function(stone) {
+                cost_matrix.set(stone.pos.x, stone.pos.y, 1);
+            });
             
             for (var k = 0; k < road_sites.length; k ++) {
                 cost_matrix.set(road_sites[k].pos.x, road_sites[k].pos.y, 1)
@@ -206,7 +210,6 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
         var find_res = PathFinder.search(from_pos, {pos:to_pos, range:1}, {plainCost: 2,
             swampCost: 10, roomCallback:get_cost_matrix})
         var path = find_res.path;
-        console.log("cost:" + find_res.cost)
         for (var k = 0; k < path.length; k ++) {
             planner.cache_road_site(path[k].x, path[k].y)
         }
@@ -218,6 +221,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
     schedule_plan_roads() {
         if (!this.check_for_roads_replan()) {
             /* doesn't need replan */
+            this.room.memory.user.maintain.roads.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL
             return
         }
 
@@ -247,10 +251,31 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
         this.room.memory.user.maintain.roads.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL
     }
 
+    schedule_plan_container() {
+        /* container to settle after all plan done */
+        if (this.pq.top()) return;
+        /* container to settle after all roads done */
+        var roads_site_list = room.find(FIND_MY_CONSTRUCTION_SITES, {filter: (s) => {return (s.structureType == STRUCTURE_ROAD)}})
+        if (roads_site_list.length > 0) return;
+        /* if every resource has assigned container and it exists, skip */
+        var source_dict = this.room.memory.user.resources.sources.dict
+        for (var src_id in source_dict) {
+            if (source_dict[src_id].container_id == undefined || (!Game.getObjectById(source_dict[src_id].container_id))) {
+                /* plan for this source */
+                var source = Game.getObjectById(source_dict[src_id])
+
+
+
+            }
+        }
+
+        /* no matter how, flush */
+        this.pq.push(PlannerOp.generate(PlannerOp.PLANNER_OPCODE_FLUSH_PLAN, {}), 0)
+    }
+
     schedule() {
         this.is_new_level();
         this.schedule_plan_roads();
-        this.pq.save()
         this.room.memory.user.maintain.last_plan_level = this.room.controller.level
     }
 
@@ -361,6 +386,9 @@ class RoomPlanner {
                 var source = list[i]
                 /* look for terrain plan/swamp */
                 var stance = RoomPlanner.look_for_stance_in_rect(this.obj.name, source.pos.x, source.pos.y, 1);
+                for (var j = 0;j < stance.length; j ++) {
+                    stance[j].target_id = source.id
+                }
                 Logger.debug(this, "stance=" + stance.length)
                 this.obj.memory.user.resources.sources.dict[source.id] = {
                     stances: stance

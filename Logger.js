@@ -29,6 +29,13 @@ module.exports = {
 
     bug(module, str) {
         Memory.user.bug.exist = true;
+        Memory.user.bug.module = module.MODULE_NAME
+        Memory.user.bug.message = str
+    },
+
+    _bug(str) {
+        Memory.user.bug.exist = true;
+        Memory.user.bug.message = str
     },
 
     log(module, str) {
@@ -69,14 +76,14 @@ module.exports = {
         if (Memory.user.logger.log_level <= this.ERROR)
             console.log("" + Game.time + ":[" + "ERROR" + "]" + module.MODULE_NAME + ": " + str);
         if(Memory.user.logger.bug_on_error) {
-            this.bug()
+            this.bug(module, str)
         }
     },
     _error(str) {
         if (Memory.user.logger.log_level <= this.ERROR)
             console.log("" + Game.time + ":[" + "ERROR" + "]" + ": " + str);
         if(Memory.user.logger.bug_on_error) {
-            this.bug()
+            this._bug(str)
         }
     },
 }

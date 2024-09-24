@@ -111,6 +111,7 @@ const SystemManager = {
         }
         if (Memory.user.env == undefined) {
             Memory.user.env = {}
+            Memory.user.env.exec_handler = null
         }
         if (Memory.user.bug == undefined) {
             Memory.user.bug = {}
@@ -129,10 +130,22 @@ const SystemManager = {
         return (Memory.user.bug.exist)
     },
 
+    exec_once(handler, func) {
+        if (Memory.user.exec_handler == handler) {
+            return;
+        }
+        /* func() return 0 then will not be executed anymore */
+        if (!func()) {
+            Memory.user.exec_handler = handler
+        }
+    },
+
     loop() {
         SystemManager.init()
         if (SystemManager.has_bug()) {
-            Logger._log("BUG! Stop...")
+            if (!Memory.user.bug.printed)
+                Logger._log("BUG! Stop...")
+            Memory.user.bug.printed = true;
             return;
         }
         GCWorker.run();

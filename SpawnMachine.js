@@ -46,7 +46,7 @@ const WorkerDesigner = {
 }
 
 const SpawnClassOptions = {
-    WORKER_LIMIT : 6,
+    WORKER_LIMIT : 8,
 };
 
 class SpawnClass {
