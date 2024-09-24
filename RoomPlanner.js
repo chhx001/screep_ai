@@ -135,7 +135,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             Memory.user.cache = structure_type
             count += this.room.find(find_structure, {filter: (s) => {return (s.structureType == Memory.user.cache)}}).length
             count += this.room.find(find_construction_site, {filter: (s) => {return (s.structureType == Memory.user.cache)}}).length
-            if (count != memory_entry.count) {
+            if (count < memory_entry.count) {
                 /* actual road is lesser than road in this room */
                 memory_entry.count = count;
                 memory_entry.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL;
@@ -185,6 +185,12 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
     }
 
     do_road_plan_task(planner, op) {
+        /* plan when unclean site cache, may conflict, should not happen, error on it*/
+        if ((Object.keys(this.room.memory.user.site_cache).length > 0)) {
+            Logger.error(this, "Road plan with unclean cache")
+            return OP_DONE
+        }
+        
         /* overwrite road site cost as built road */
         var get_cost_matrix = function(room_name) {
             var room = Game.rooms[room_name];
@@ -227,6 +233,8 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
     }
 
     schedule_plan_roads() {
+        if ((Object.keys(this.room.memory.user.site_cache).length > 0)) return
+
         if (this.room.memory.user.maintain.roads == undefined || this.force_scan) {
             this.room.memory.user.maintain.roads = {count:-1, next_tick:0}
         }
@@ -250,6 +258,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
                 for (var k = 0; k < mining_park.length; k ++) {
                     var park = mining_park[k];
                     this.cache_road_site(park.x, park.y);
+                    this.pq.push(PlannerOp.generate(PlannerOp.PLANNER_OPCODE_FLUSH_PLAN, {}), 0)
                 } 
                 
             }
@@ -263,6 +272,9 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
     schedule_plan_container() {
         /* container to settle after all other plan done */
         if (this.pq.top()) return;
+
+        /* plan when no site cache, to avoid conflict */
+        if ((Object.keys(this.room.memory.user.site_cache).length > 0)) return
 
         if (this.room.memory.user.maintain.containers == undefined || this.force_scan) {
             this.room.memory.user.maintain.containers = {count:-1, next_tick:0}
@@ -336,9 +348,9 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
 
                 if (best_position) {
                     /* OK, this is the place, if there is constuction site already, remove it */
-                    best_position.lookFor(LOOK_CONSTRUCTION_SITES).forEach((site) => {
-                        site.remove();
-                    })
+                    // best_position.lookFor(LOOK_CONSTRUCTION_SITES).forEach((site) => {
+                    //     site.remove();
+                    // })
                     /* cache the site */
                     this.cache_site(best_position.x, best_position.y, STRUCTURE_CONTAINER)
                 }

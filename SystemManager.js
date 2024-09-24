@@ -145,7 +145,7 @@ const SystemManager = {
     loop() {
         SystemManager.init()
         if (SystemManager.has_bug()) {
-            if (!Memory.user.bug.printed)
+            //if (!Memory.user.bug.printed)
                 Logger._log("BUG! Stop...")
             Memory.user.bug.printed = true;
             return;
