@@ -15,6 +15,7 @@ const RoomPlannerOption = {
 const PlannerOp = {
     PLANNER_OPCODE_ROAD_PATH        : 0x2000,
     PLANNER_OPCODE_FLUSH_PLAN       : 0x2001,
+    PLANNER_OPCODE_REVISIT_FLUSH    : 0x2002, /* for a specific site which can't be built, revisit it after some time */
 
     generate(opcode, params) {
         var ret = {}
@@ -43,6 +44,7 @@ class BuildPlannerLevel0 {
         if (this.obj.memory.user.pq == undefined || this.obj.memory.user.pq.module_name != this.MODULE_NAME) {
             this.obj.memory.user.pq = {}
             this.pq = new PrioritizedQueue(this.obj.memory.user.pq)
+            
             this.pq.init(RoomPlannerOption.max_queue_priority, RoomPlannerOption.queue_size_list, this.MODULE_NAME)
             this.pq.save()
         } else {
@@ -52,6 +54,7 @@ class BuildPlannerLevel0 {
 
         this.op_task_map = []
         this.op_task_map.push({code: PlannerOp.PLANNER_OPCODE_FLUSH_PLAN, cb: this.flush_construction_site})
+        this.op_task_map.push({code: PlannerOp.PLANNER_OPCODE_REVISIT_FLUSH, cb: this.revisit_construction_site})
 
         if (this.room.memory.user.site_cache == undefined) {
             this.room.memory.user.site_cache = {}
@@ -66,8 +69,13 @@ class BuildPlannerLevel0 {
             for (x in site_cache) {
                 for (y in site_cache[x]) {
                     var r = planner.room.createConstructionSite(Number(x), Number(y), site_cache[x][y])
-                    if (r == ERR_FULL) {/* too many sites, return OK to stop looping, but keep the site */
+                    if (r == ERR_FULL) {/* too many sites, return OK to stop looping, but keep the cache */
                         return OP_DONE
+                    } else if (r == ERR_INVALID_TARGET) {
+                        /* schedule a revisit, probaby because the position is occupied */
+                        planner.pq.push(PlannerOp.generate(PlannerOp.PLANNER_OPCODE_REVISIT_FLUSH, {revisit:{x:x, y:y, type:site_cache[x][y], tick:Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL}}), 0)
+                    } else if (r != OK) {
+                        Logger.error(planner, "construction site report special error " + r);
                     }
                     break;
                 }
@@ -88,6 +96,33 @@ class BuildPlannerLevel0 {
             planner.pq.pop()
             return OP_DONE
         }
+    }
+
+    revisit_construction_site(planner, op) {
+        var tick = op.revisit.tick
+        if (tick > Game.time) {
+            /* resubmit to tail */
+            planner.pq.push(op, 0)
+            planner.pq.pop()
+            return OP_DONE;
+        }
+
+        var x = op.revisit.x;
+        var y = op.revisit.y;
+        var type = op.revisit.type
+
+        var r = planner.room.createConstructionSite(Number(x), Number(y), type)
+        if (r == ERR_FULL || r == ERR_INVALID_TARGET) {/* revisit again */
+            op.tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL
+            planner.pq.push(op, 0)
+            planner.pq.pop()
+        } else if (r != OK) {
+            Logger.error(planner, "construction site report special error " + r);
+        } else {
+            planner.pq.pop()
+        }
+
+        return OP_DONE
     }
 
     run(max_cycle=RoomPlannerOption.BUILD_PLAN_DEFAULT_MAX_CYCLE) {
@@ -135,7 +170,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             Memory.user.cache = structure_type
             count += this.room.find(find_structure, {filter: (s) => {return (s.structureType == Memory.user.cache)}}).length
             count += this.room.find(find_construction_site, {filter: (s) => {return (s.structureType == Memory.user.cache)}}).length
-            if (count < memory_entry.count) {
+            if (count < memory_entry.count || memory_entry.count == -1) {
                 /* actual road is lesser than road in this room */
                 memory_entry.count = count;
                 memory_entry.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL;
@@ -186,8 +221,8 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
 
     do_road_plan_task(planner, op) {
         /* plan when unclean site cache, may conflict, should not happen, error on it*/
-        if ((Object.keys(this.room.memory.user.site_cache).length > 0)) {
-            Logger.error(this, "Road plan with unclean cache")
+        if ((Object.keys(planner.room.memory.user.site_cache).length > 0)) {
+            Logger.error(planner, "Road plan with unclean cache")
             return OP_DONE
         }
         
@@ -252,14 +287,15 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
         for (var source_id in sources) {
             for (var i = 0; i < spawn_list.length; i ++) {
                 var source = Game.getObjectById(source_id)
-                this.submit_road_plan_task(spawn_list[i].pos.x, spawn_list[i].pos.y, source.pos.x, source.pos.y)
                 /* road sourround sources, in range 2 */
                 var mining_park = RoomPlanner.look_for_stance_in_rect(this.room.name, source.pos.x, source.pos.y, 2);
                 for (var k = 0; k < mining_park.length; k ++) {
                     var park = mining_park[k];
                     this.cache_road_site(park.x, park.y);
                     this.pq.push(PlannerOp.generate(PlannerOp.PLANNER_OPCODE_FLUSH_PLAN, {}), 0)
-                } 
+                }
+
+                this.submit_road_plan_task(spawn_list[i].pos.x, spawn_list[i].pos.y, source.pos.x, source.pos.y)
                 
             }
 

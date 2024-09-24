@@ -123,7 +123,7 @@ module.exports = class PrioritizedQueue {
     push(content, priority) {
         var rb = this.queue_list[priority]
         if (rb.is_full()) {
-            Logger.warn(this, "Prioritized Queue is full when pushing, drop....")
+            Logger.error(this, "Prioritized Queue is full when pushing, drop....")
             return;
         }
         rb.push(content)
