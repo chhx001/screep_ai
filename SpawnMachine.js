@@ -68,14 +68,14 @@ class SpawnClass {
         var count = 0;
         for (var i in creep_list) {
             var creep  = creep_list[i]
-            if (creep.memory.user && creep.memory.user.type && creep.memory.user.type == CreepTypes.WORKER.name) {
+            if (creep.memory.user && creep.memory.user.type && creep.memory.user.type == CreepTypes.Worker.name) {
                 count ++;
             }
         }
         Logger.debug(this, "worker count="+count)
         if (count < SpawnClassOptions.WORKER_LIMIT) {
-            var creep_name = NameGen.gen(CreepTypes.WORKER.name)
-            var r = this.obj.spawnCreep(WorkerDesigner.generate(room.energyAvailable), creep_name, {memory:{user:{type:CreepTypes.WORKER.name}}});
+            var creep_name = NameGen.gen(CreepTypes.Worker.name)
+            var r = this.obj.spawnCreep(WorkerDesigner.generate(room.energyAvailable), creep_name, {memory:{user:{type:CreepTypes.Worker.name}}});
             if (r) {
                 Logger.warn(this, "Spawn failed, err=" + r);
             } else {

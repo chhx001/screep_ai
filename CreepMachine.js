@@ -379,8 +379,8 @@ class WorkerMachine extends CreepMachine{
 
 
 const CreepTypes = {
-    WORKER : {name:"Worker", machine:WorkerMachine},
-    UNKNOWN : {name:"Unknown", machine:BasicMachine},
+    Worker : {name:"Worker", machine:WorkerMachine},
+    Unknown : {name:"Unknown", machine:BasicMachine},
 }
 
 
@@ -413,18 +413,23 @@ class CreepClass {
         }
         
         // type and state machine assignment
-        this.identify_type()
+        if (this.obj.memory.user.type == undefined) {
+            this.identify_type()
+        } else {
+            this.type = this.obj.memory.user.type
+            this.machine = CreepTypes[this.type].machine
+        }
 
     }
 
     identify_type() {
         if (this.obj.getActiveBodyparts(WORK) > 0) {
-            this.type = CreepTypes.WORKER.name
-            this.machine = CreepTypes.WORKER.machine
+            this.type = CreepTypes.Worker.name
+            this.machine = CreepTypes.Worker.machine
         } else {
             Logger.warn(this, "Get an unknown creep type")
-            this.type = CreepTypes.UNKNOWN.name
-            this.machine = CreepTypes.UNKNOWN.machine
+            this.type = CreepTypes.Unknown.name
+            this.machine = CreepTypes.Unknown.machine
         }
         this.obj.memory.user.type = this.type
     }

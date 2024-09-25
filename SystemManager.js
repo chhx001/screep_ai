@@ -129,7 +129,7 @@ const SystemManager = {
     },
 
     has_bug() {
-        return (Memory.user.bug.exist)
+        return (Memory.user.bug.exist && Game.time < Memory.user.bug.expire)
     },
 
     exec_once(handler, func) {

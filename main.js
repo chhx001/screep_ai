@@ -28,5 +28,5 @@ function clear_all() {
 
 module.exports.loop = function() {
     SystemManager.loop()
-    //SystemManager.exec_once(4, clear_all)
+    SystemManager.exec_once(11, clear_all)
 }

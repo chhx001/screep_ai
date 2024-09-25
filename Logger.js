@@ -31,11 +31,13 @@ module.exports = {
         Memory.user.bug.exist = true;
         Memory.user.bug.module = module.MODULE_NAME
         Memory.user.bug.message = str
+        Memory.user.bug.expire = Game.time + 100
     },
 
     _bug(str) {
         Memory.user.bug.exist = true;
         Memory.user.bug.message = str
+        Memory.user.bug.expire = Game.time + 100
     },
 
     log(module, str) {
