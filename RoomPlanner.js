@@ -368,9 +368,6 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
     }
 
     schedule() {
-        
-        
-
         this.is_new_level();
         if (CpuManager.agree())
             this.schedule_plan_roads();
@@ -387,6 +384,32 @@ class BuildPlannerLevel2 extends BuildPlannerLevel1 {
     constructor(room_name) {
         super(room_name)
     }
+
+    schedule_plan_extensions() {
+        if (this.room.memory.user.maintain[STRUCTURE_EXTENSION] == undefined) {
+            this.room.memory.user.maintain[STRUCTURE_EXTENSION] = {count:-1, next_tick:0}
+        }
+        if (!this.check_for_replan(STRUCTURE_EXTENSION, FIND_MY_STRUCTURES, FIND_MY_CONSTRUCTION_SITES, this.room.memory.user.maintain[STRUCTURE_EXTENSION])) {
+            /* doesn't need replan */
+            return
+        }
+
+        /* Extension Park Design */
+        /* R = Road E = Extension X=Any
+         * X X R X X
+         * X R E R X
+         * R E E E R
+         * X R E R X
+         * X X R X X
+         * /
+         /* We need to find the centry pos first, then plan the others.
+          * Each tick just plan for 1 entire park, to avoid conflicts
+          * the extension max count is depends on the controller, so when checking, compare it with the controller's max value */
+
+        
+        
+    }
+
 }
 
 class BuildPlannerLevel3 extends BuildPlannerLevel2 {
