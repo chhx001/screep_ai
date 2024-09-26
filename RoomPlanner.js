@@ -75,8 +75,6 @@ class BuildPlannerLevel0 {
                     } else {
                         planner.room.memory.user.maintain.site_num ++;
                         if (planner.room.memory.user.maintain[site_cache[x][y]].count != undefined) {
-                            if (planner.room.memory.user.maintain[site_cache[x][y]].count == -1)    //overwrite the default value
-                                planner.room.memory.user.maintain[site_cache[x][y]].count = 0
                             planner.room.memory.user.maintain[site_cache[x][y]].count ++
                         }
                     }
@@ -142,7 +140,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
         }
     }
 
-    check_for_replan(structure_type, find_structure, find_construction_site, memory_entry) {
+    check_for_replan(structure_type, find_structure, find_construction_site, memory_entry, minimum_count = 0) {
         /* only plan when pq clear, no construction site on the room, no cached sites , to avoid conflict */
         if (this.pq.top()) return;
         if ((Object.keys(this.room.memory.user.site_cache).length > 0)) {
@@ -150,17 +148,18 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             this.pq.push(PlannerOp.generate(PlannerOp.PLANNER_OPCODE_FLUSH_PLAN, {}), 0)
             return;
         }
+        
         if (this.room.memory.user.maintain.site_num > 0) return;
-
+        
         var count = 0
         if (memory_entry.next_tick <= Game.time) {
+            
             /* rescan to see if need replan */
             Memory.user.cache = structure_type
             count += this.room.find(find_structure, {filter: (s) => {return (s.structureType == Memory.user.cache)}}).length
             count += this.room.find(find_construction_site, {filter: (s) => {return (s.structureType == Memory.user.cache)}}).length
-            if (count < memory_entry.count || memory_entry.count == -1) {
+            if (count < memory_entry.count || count < minimum_count) {
                 /* actual road is lesser than road in this room */
-                memory_entry.count = count;
                 memory_entry.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL;
                 return true
             }
@@ -256,7 +255,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
 
     schedule_plan_roads() {
         if (this.room.memory.user.maintain[STRUCTURE_ROAD] == undefined) {
-            this.room.memory.user.maintain[STRUCTURE_ROAD] = {count:-1, next_tick:0}
+            this.room.memory.user.maintain[STRUCTURE_ROAD] = {count:0, next_tick:0}
         }
         if (!this.check_for_replan(STRUCTURE_ROAD, FIND_STRUCTURES, FIND_MY_CONSTRUCTION_SITES, this.room.memory.user.maintain[STRUCTURE_ROAD])) {
             return
@@ -291,13 +290,16 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
 
     schedule_plan_container() {
         if (this.room.memory.user.maintain[STRUCTURE_CONTAINER] == undefined) {
-            this.room.memory.user.maintain[STRUCTURE_CONTAINER] = {count:-1, next_tick:0}
+            this.room.memory.user.maintain[STRUCTURE_CONTAINER] = {count:0, next_tick:0}
         }
         
-        if (!this.check_for_replan(STRUCTURE_CONTAINER, FIND_MY_STRUCTURES, FIND_MY_CONSTRUCTION_SITES, this.room.memory.user.maintain[STRUCTURE_CONTAINER])) {
+        var source_num = Object.keys(this.room.memory.user.resources.sources.dict).length
+        
+        if (!this.check_for_replan(STRUCTURE_CONTAINER, FIND_MY_STRUCTURES, FIND_MY_CONSTRUCTION_SITES, this.room.memory.user.maintain[STRUCTURE_CONTAINER], source_num)) {
             /* doesn't need replan */
             return
         }
+        
 
         /* if every resource has assigned container and it exists, skip */
         var source_dict = this.room.memory.user.resources.sources.dict
@@ -305,6 +307,10 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             if (source_dict[src_id].container_id == undefined || (!Game.getObjectById(source_dict[src_id].container_id))) {
                 /* plan for this source */
                 var source = Game.getObjectById(src_id)
+                /* if source already has an container in range 2, skip */
+                if (source.pos.findInRange(FIND_MY_STRUCTURES, {filter:(s)=>{return s.structureType == STRUCTURE_CONTAINER}}).length > 0)
+                    continue;
+
                 /* find a place, which distance_to_source=2, terrain is plain or swamp, no source/mineral and structure(except road) in distance1 */
                 var terrain = new Room.Terrain(this.room.name)
                 var best_position = null
@@ -437,7 +443,7 @@ class BuildPlannerLevel2 extends BuildPlannerLevel1 {
 
     schedule_plan_extensions() {
         if (this.room.memory.user.maintain[STRUCTURE_EXTENSION] == undefined) {
-            this.room.memory.user.maintain[STRUCTURE_EXTENSION] = {count:-1, next_tick:0}
+            this.room.memory.user.maintain[STRUCTURE_EXTENSION] = {count:0, next_tick:0}
         }
         /* for extension, the desired num is always the controller's max num */
         //this.room.memory.user.maintain[STRUCTURE_EXTENSION].count = Number(CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][this.room.controller.level])
