@@ -210,6 +210,7 @@ class CreepMachine extends BasicMachine {
     }
 
     static repair(creep, op) {
+        creep.obj.say('repair')
         if (creep.obj.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
             if (op.target_id == undefined) {
                 /* hash it by time, random pick one */
@@ -220,6 +221,10 @@ class CreepMachine extends BasicMachine {
             var target = Game.getObjectById(op.target_id)
             if (!target) {
                 /* site is gone, repair over */
+                creep.pq.pop();
+                return OP_AGAIN_NEXT;
+            }
+            if (target.hits / target.hitsMax > 0.8) {
                 creep.pq.pop();
                 return OP_AGAIN_NEXT;
             }
@@ -339,24 +344,24 @@ class WorkerMachine extends CreepMachine{
                     return OP_AGAIN_NEXT
                 }
 
-                /* build */
-                var target = creep.obj.pos.findClosestByRange(FIND_MY_CONSTRUCTION_SITES)
+                /* maintain/repair if there are dangerous structures which belows 20% hits */
+                var filter = (s) => {
+                    return (s.hitsMax > 0 && (s.hits / s.hitsMax < 0.2));
+                }
+                target = creep.obj.pos.findClosestByRange(FIND_STRUCTURES, {filter: filter});
                 if (target) {
                     var target_id_list = [target.id]
-                    var op = CreepOp.generate(CreepOp.CREEP_OPCODE_BUILD, {
+                    var op = CreepOp.generate(CreepOp.CREEP_OPCODE_REPAIR, {
                         target_id_list: target_id_list});
                     creep.pq.push(op, 0)
                     return OP_AGAIN_NEXT
                 }
 
-                /* maintain/repair if there are dangerous structures which belows 20% hits */
-                var filter = (s) => {
-                    return (s.hitsMax > 0 && (s.hits / s.hitsMax < 0.2));
-                }
-                target = creep.obj.pos.findClosestByRange(FIND_MY_STRUCTURES, {filter: filter});
+                /* build */
+                var target = creep.obj.pos.findClosestByRange(FIND_MY_CONSTRUCTION_SITES)
                 if (target) {
                     var target_id_list = [target.id]
-                    var op = CreepOp.generate(CreepOp.CREEP_OPCODE_REPAIR, {
+                    var op = CreepOp.generate(CreepOp.CREEP_OPCODE_BUILD, {
                         target_id_list: target_id_list});
                     creep.pq.push(op, 0)
                     return OP_AGAIN_NEXT
