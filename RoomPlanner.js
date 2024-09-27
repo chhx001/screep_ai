@@ -160,6 +160,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             count += this.room.find(find_construction_site, {filter: (s) => {return (s.structureType == Memory.user.cache)}}).length
             if (count < memory_entry.count || count < minimum_count) {
                 /* actual road is lesser than road in this room */
+                memory_entry.count = count
                 memory_entry.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL;
                 return true
             }
