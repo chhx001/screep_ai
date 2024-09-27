@@ -1,3 +1,5 @@
+const Logger = require("./Logger")
+
 const MAX_BUCKET = 10000
 class CpuManager {
     static init() {
@@ -17,6 +19,11 @@ class CpuManager {
         if(Game.cpu.tickLimit == Infinity) {
             /* probably simulator, always agree */
             return true;
+        }
+
+        if (used > 20) {
+            Logger._warn("Cpu used > 20")
+            console.log((new Error()).stack)
         }
 
         /* blast mode < 95% is good to go, total 500ms, 5% is 25ms */

@@ -166,6 +166,8 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             }
         }
 
+        console.log("false on ", structure_type, minimum_count)
+
         return false
     }
 
@@ -183,7 +185,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
         /* if already built, skip*/
         var pos_at = this.room.getPositionAt(x, y).look()
         for (var i = 0; i < pos_at.length; i ++) {
-            if (pos_at[i].type == "structure" && pos_at[i].structure.structureType == STRUCTURE_ROAD)
+            if (pos_at[i].type == "structure" && (pos_at[i].structure.structureType != STRUCTURE_CONTAINER && pos_at[i].structure.structureType != STRUCTURE_RAMPART))
                 return
             if (pos_at[i].type == "constructionSite" && pos_at[i].constructionSite.structureType == STRUCTURE_ROAD)
                 return
@@ -256,7 +258,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
 
     schedule_plan_roads() {
         if (this.room.memory.user.maintain[STRUCTURE_ROAD] == undefined) {
-            this.room.memory.user.maintain[STRUCTURE_ROAD] = {count:0, next_tick:0}
+            this.room.memory.user.maintain[STRUCTURE_ROAD] = {count:Infinity, next_tick:0}
         }
         if (!this.check_for_replan(STRUCTURE_ROAD, FIND_STRUCTURES, FIND_MY_CONSTRUCTION_SITES, this.room.memory.user.maintain[STRUCTURE_ROAD])) {
             return
@@ -287,11 +289,42 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             var controller = this.room.controller;
             this.submit_road_plan_task(controller.pos.x, controller.pos.y, source.pos.x, source.pos.y)
         }
+
+        /* surround spawns */
+        for (var i = 0; i < spawn_list.length; i ++) {
+            var spawn = spawn_list[i]
+            /* road sourround sources, in range 1 */
+            var spawn_road_plan = RoomPlanner.look_for_stance_in_rect(this.room.name, spawn.pos.x, spawn.pos.y, 1);
+            for (var k = 0; k < spawn_road_plan.length; k ++) {
+                var plan = spawn_road_plan[k];
+                this.cache_road_site(plan.x, plan.y);
+            }
+        }
+
+        /* surround controllers */
+        var controller = this.room.controller;
+        var controller_road_plan = RoomPlanner.look_for_stance_in_rect(this.room.name, controller.pos.x, controller.pos.y, 1);
+        for (var k = 0; k < controller_road_plan.length; k ++) {
+            var plan = controller_road_plan[k];
+            this.cache_road_site(plan.x, plan.y);
+        }
+
+        /* extension park */
+        var ext_list = this.room.find(FIND_MY_STRUCTURES, {filter: (s) => {return (s.structureType == STRUCTURE_EXTENSION)}})
+        for (var k = 0; k < ext_list.length; k ++) {
+            var ext = ext_list[k];
+            /* for each extension, road only on up, down, left, right */
+            this.cache_road_site(ext.pos.x + 1, ext.pos.y);
+            this.cache_road_site(ext.pos.x - 1, ext.pos.y);
+            this.cache_road_site(ext.pos.x, ext.pos.y + 1);
+            this.cache_road_site(ext.pos.x, ext.pos.y - 1);
+        }
+
     }
 
     schedule_plan_container() {
         if (this.room.memory.user.maintain[STRUCTURE_CONTAINER] == undefined) {
-            this.room.memory.user.maintain[STRUCTURE_CONTAINER] = {count:0, next_tick:0}
+            this.room.memory.user.maintain[STRUCTURE_CONTAINER] = {count:Infinity, next_tick:0}
         }
         
         var source_num = Object.keys(this.room.memory.user.resources.sources.dict).length
@@ -400,7 +433,7 @@ class BuildPlannerLevel2 extends BuildPlannerLevel1 {
         /* park can't exceed room */
         if (y -  2 < 0 || x - 2 < 0 || y + 2 >= ROOM_HEIGHT || x + 2 >= ROOM_WIDTH)
             return false;
-        area = this.room.lookAtArea(y - 2, x - 2, y + 2, x + 2);
+        var area = this.room.lookAtArea(y - 2, x - 2, y + 2, x + 2);
         /* see center, no structure and walkable */
         var empty_at = (area_at) => {
             for (var i = 0; i < area_at.length; i ++) {
@@ -423,7 +456,7 @@ class BuildPlannerLevel2 extends BuildPlannerLevel1 {
             for (var i = 0; i < area_at.length; i ++) {
                 if (area_at[i].type == "terrain" && area_at[i].terrain == "wall")
                     return false;
-                if (area_at[i].type == "structure" && (area_at.structure.structureType != STRUCTURE_ROAD && area_at.structure.structureType != STRUCTURE_CONTAINER))
+                if (area_at[i].type == "structure" && (area_at[i].structure.structureType != STRUCTURE_ROAD && area_at[i].structure.structureType != STRUCTURE_CONTAINER))
                     return false
                 return true
             }
@@ -444,11 +477,12 @@ class BuildPlannerLevel2 extends BuildPlannerLevel1 {
 
     schedule_plan_extensions() {
         if (this.room.memory.user.maintain[STRUCTURE_EXTENSION] == undefined) {
-            this.room.memory.user.maintain[STRUCTURE_EXTENSION] = {count:0, next_tick:0}
+            this.room.memory.user.maintain[STRUCTURE_EXTENSION] = {count:Infinity, next_tick:0}
         }
         /* for extension, the desired num is always the controller's max num */
         //this.room.memory.user.maintain[STRUCTURE_EXTENSION].count = Number(CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][this.room.controller.level])
-        if (!this.check_for_replan(STRUCTURE_EXTENSION, FIND_MY_STRUCTURES, FIND_MY_CONSTRUCTION_SITES, this.room.memory.user.maintain[STRUCTURE_EXTENSION])) {
+        if (!this.check_for_replan(STRUCTURE_EXTENSION, FIND_MY_STRUCTURES, FIND_MY_CONSTRUCTION_SITES,
+            this.room.memory.user.maintain[STRUCTURE_EXTENSION], CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][this.room.controller.level])) {
             /* doesn't need replan */
             return
         }
@@ -467,7 +501,7 @@ class BuildPlannerLevel2 extends BuildPlannerLevel1 {
         /* search from spawn */
         var range = 2;  
         var spawn_list = this.room.find(FIND_STRUCTURES, {filter:(s) => {return s.structureType == STRUCTURE_SPAWN}})
-        var x,y;
+        var x,y, found_x, found_y;
         var found = false
         if (spawn_list.length > 0) {
             /* the closest start range is 2 */
@@ -478,15 +512,17 @@ class BuildPlannerLevel2 extends BuildPlannerLevel1 {
                     var right = spawn_list[i].pos.x + range
                     var bottom = spawn_list[i].pos.y + range
                     if (left < 0 && up < 0 && bottom >= ROOM_HEIGHT && right >= ROOM_WIDTH) continue;   /* if the boarder is all out of room, continue */
-                    for (y = up, x = left; x <= right && !found; x ++) found = this.validate_extension_park(x, y);
-                    for (y = up, x = left; y <= bottom && !found; y ++) found = this.validate_extension_park(x, y);
-                    for (y = bottom, x = right; x >= left && !found; x --) found = this.validate_extension_park(x, y);
-                    for (y = bottom, x = right; y >= up && !found; y ++) found = this.validate_extension_park(x, y);
+                    for (y = up, x = left; x <= right && !found; x ++) {found = this.validate_extension_park(x, y); found_x = x; found_y = y;}
+                    for (y = up, x = left; y <= bottom && !found; y ++) {found = this.validate_extension_park(x, y); found_x = x; found_y = y;}
+                    for (y = bottom, x = right; x >= left && !found; x --) {found = this.validate_extension_park(x, y); found_x = x; found_y = y;}
+                    for (y = bottom, x = right; y >= up && !found; y --) {found = this.validate_extension_park(x, y); found_x = x; found_y = y;}
                 }
             }
         }
 
         if (found) {
+            x = found_x;
+            y = found_y;
             this.cache_road_site(x-2, y);
             this.cache_road_site(x-1, y-1);
             this.cache_road_site(x, y-2);
