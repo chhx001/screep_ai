@@ -627,15 +627,42 @@ class RoomPlanner {
 
     scan_structure_site() {
         /* if there is sites, or this is tick to scan, then scan */
-        if (this.room.memory.user.maintain.next_tick > Game.time) return
         if (this.room.memory.user.maintain.site_num == 0) return
         this.room.memory.user.maintain.site_num = this.room.find(FIND_MY_CONSTRUCTION_SITES).length;
+        
+    }
+
+    scan_extension_park() {
+        /* find the center of each extension park */
+        /* the full extension park is always 
+         *     E
+         *   E E E
+         *     E
+         */
+        /* so we find the first one, then see if it is one of the above position,
+         * incase that any of the extionsions are destroied, a plain or swamp is also
+         * accepted, if we found one, always record the CENTER pos */
+
+        var extension_list = this.room.find(FIND_MY_STRUCTURES, {filter: (s) => {return s.structureType == STRUCTURE_EXTENSION}})
+        /* if extension is full, then don't need to scan anymore */
+        if (this.room.memory.user.maintain[STRUCTURE_EXTENSION].count == CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][this.room.controller.level]) return;
+
+        for (var i = 0; i < extension_list.length; i ++) {
+
+        }
+
+    }
+
+    scan_for_maintainance() {
+        if (this.room.memory.user.maintain.next_tick > Game.time) return
+        this.scan_structure_site();
+        this.scan_extension_park();
         this.room.memory.user.maintain.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL;
     }
 
     scan() {
         this.scan_resouces();
-        this.scan_structure_site();
+        this.scan_for_maintainance();
     }
 
     schedule_build() {
