@@ -166,8 +166,6 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             }
         }
 
-        console.log("false on ", structure_type, minimum_count)
-
         return false
     }
 
