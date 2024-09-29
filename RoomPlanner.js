@@ -678,13 +678,45 @@ class RoomPlanner {
          * incase that any of the extionsions are destroied, a plain or swamp is also
          * accepted, if we found one, always record the CENTER pos */
 
+        /* to identify the park, we need at least 3 extensions alive, other wise the center
+         * is unable to be identified */
+
+        /* TODO: if less than 3 extensions alive, we can destroy the orphan extensions and re-locate the park */
+
+        var is_center = (x, y) => {
+            /* only center has extensions on up, left,right,bottom, found 2 is enough */
+            var found = 0;
+            if (Memory.user.cache[x-1] != undefined && Memory.user.cache[x-1][y] != undefined) found ++;
+            if (Memory.user.cache[x+1] != undefined && Memory.user.cache[x+1][y] != undefined) found ++;
+            if (Memory.user.cache[x] != undefined && Memory.user.cache[x][y-1] != undefined) found ++;
+            if (Memory.user.cache[x] != undefined && Memory.user.cache[x][y+1] != undefined) found ++;
+
+            return found >= 2;
+        }
+
         var extension_list = this.room.find(FIND_MY_STRUCTURES, {filter: (s) => {return s.structureType == STRUCTURE_EXTENSION}})
         /* if extension is full, then don't need to scan anymore */
         if (this.room.memory.user.maintain[STRUCTURE_EXTENSION].count == CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][this.room.controller.level]) return;
 
+        /* convert list to cache[x][y] */
+        Memory.user.cache = {}
         for (var i = 0; i < extension_list.length; i ++) {
-
+            var x = extension_list[i].pos.x;
+            var y = extension_list[i].pos.y;
+            if (Memory.user.cache[x] == undefined)
+                Memory.user.cache[x] = {}
+            Memory.user.cache[x][y] = 1;
         }
+
+        /* find center */
+        for (var i = 0; i < extension_list.length; i ++) {
+            var x = extension_list[i].pos.x;
+            var y = extension_list[i].pos.y;
+            if (Memory.user.cache[x] == undefined)
+                Memory.user.cache[x] = {}
+            Memory.user.cache[x][y] = true;
+        }
+        
 
     }
 
