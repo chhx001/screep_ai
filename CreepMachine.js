@@ -1,3 +1,4 @@
+const { BasicMachine } = require("./BasicMachine");
 const Logger = require("./Logger");
 const PrioritizedQueue = require("./PrioritizedQueue");
 
@@ -43,18 +44,6 @@ const CreepOp = {
         }
         op.target_id = target_id;
     },
-}
-
-
-
-class BasicMachine {
-    static run(creep) {
-        Logger._warn(creep, "I'm unknown, idling...")
-    }
-
-    static schedule(creep) {
-
-    }
 }
 
 class CreepMachine extends BasicMachine {
