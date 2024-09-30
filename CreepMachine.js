@@ -1,4 +1,4 @@
-const { BasicMachine } = require("./BasicMachine");
+const { BasicMachine } = require("./BasicClasses");
 const Logger = require("./Logger");
 const PrioritizedQueue = require("./PrioritizedQueue");
 
@@ -368,8 +368,6 @@ class WorkerMachine extends CreepMachine{
     }
 
 }
-
-
 
 
 const CreepTypes = {

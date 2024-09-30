@@ -1,4 +1,4 @@
-const { BasicMachine } = require("./BasicMachine")
+const { BasicMachine } = require("./BasicClasses")
 
 const OP_DONE = 0;
 const OP_AGAIN_NEXT = 1;
@@ -174,29 +174,12 @@ class TowerMachine extends BasicMachine {
                 /* reschedule */
                 cycle += tower.machine.do_schedule(tower)
             } else {
-                switch(op.code) {
-                    case TowerOp.TOWER_OPCODE_ATTACK:
-                        cycle += tower.machine.attack(tower, op)
-                        break;
-                    case TowerOp.TOWER_OPCODE_REPAIR:
-                        cycle +=tower.machine.repair(tower, op)
-                        break;
-                    case TowerOp.TOWER_OPCODE_HEAL:
-                        cycle +=creep.machine.harvest(creep, op)
-                        break;
-                    case CreepOp.CREEP_OPCODE_UPGRADE:
-                        cycle +=creep.machine.upgrade(creep, op)
-                        break;
-                    case CreepOp.CREEP_OPCODE_BUILD:
-                        cycle +=creep.machine.build(creep, op)
-                        break;
-                    case CreepOp.CREEP_OPCODE_REPAIR:
-                        cycle +=creep.machine.repair(creep, op)
-                        break;
-                    default:
-                        Logger.error(creep, "Unknown opcode " + op.code)
-                        creep.pq.pop()
-                        break;
+                if (this.op_task_map[op.opcode] != undefined)
+                    cycle += this.op_task_map[op.opcode](tower, op)
+                else {
+                    Logger.error(creep, "Unknown opcode " + op.code)
+                    creep.pq.pop()
+                    break;
                 }
             }
 
@@ -247,4 +230,4 @@ class RoomTowerClass {
 
 }
 
-module.exports = {}
+module.exports = {RoomTowerClass}
