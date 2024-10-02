@@ -12,6 +12,7 @@ const CreepOp = {
     CREEP_OPCODE_UPGRADE         : 0x1003,
     CREEP_OPCODE_BUILD           : 0x1004,
     CREEP_OPCODE_REPAIR          : 0x1005,
+    CREEP_OPCODE_WITHDRAW        : 0x1006,
 
     generate(opcode, params) {
         var ret = {}
@@ -49,7 +50,7 @@ const CreepOp = {
 class CreepMachine extends BasicMachine {
     static harvest(creep, op) {
         creep.obj.say("Harvest")
-        if (creep.obj.store.getFreeCapacity() > 0) {
+        if (creep.obj.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
             /* confirm the target */
             var target;
             if (op.target_id == undefined) {
@@ -77,7 +78,7 @@ class CreepMachine extends BasicMachine {
                     creep.pq.pop();
                     return OP_AGAIN_NEXT;
                 } else
-                    return WorkerMachine.move(creep, op)
+                    return CreepMachine.move(creep, op)
             } else if (r == ERR_NOT_ENOUGH_RESOURCES) {
                 /* cancel this target, try again */
                 creep.pq.pop();
@@ -126,7 +127,7 @@ class CreepMachine extends BasicMachine {
                     creep.pq.pop();
                     return OP_AGAIN_NEXT;
                 }
-                return WorkerMachine.move(creep, op)
+                return CreepMachine.move(creep, op)
             } else if (r == ERR_FULL || r == ERR_INVALID_TARGET) {
                 /* cancel this target, try again */
                 creep.pq.pop();
@@ -155,7 +156,7 @@ class CreepMachine extends BasicMachine {
 
             var r = creep.obj.upgradeController(target)
             if (r == ERR_NOT_IN_RANGE) {
-                return WorkerMachine.move(creep, op)
+                return CreepMachine.move(creep, op)
             }
             return OP_DONE;
         } else {
@@ -181,7 +182,7 @@ class CreepMachine extends BasicMachine {
             }
             var r = creep.obj.build(target)
             if (r == ERR_NOT_IN_RANGE) {
-                return WorkerMachine.move(creep, op)
+                return CreepMachine.move(creep, op)
             } else if (r == ERR_INVALID_TARGET) {
                 /* cancel this target, try again */
                 creep.pq.pop();
@@ -219,7 +220,7 @@ class CreepMachine extends BasicMachine {
             }
             var r = creep.obj.repair(target)
             if (r == ERR_NOT_IN_RANGE) {
-                return WorkerMachine.move(creep, op)
+                return CreepMachine.move(creep, op)
             } else if (r == ERR_INVALID_TARGET) {
                 /* cancel this target, try again */
                 creep.pq.pop();
@@ -297,7 +298,7 @@ class WorkerMachine extends CreepMachine{
         /* TODO: Renew */
         var target_list;
         /* if empty go harvest */
-        if (creep.obj.store.getUsedCapacity() == 0) {
+        if (creep.obj.store.getUsedCapacity(RESOURCE_ENERGY) == 0) {
             target_list = creep.obj.room.find(FIND_SOURCES_ACTIVE)
             if (target_list.length > 0) {
                 target_id_list = _.map(target_list, (t)=>{return t.id})
@@ -366,82 +367,10 @@ class WorkerMachine extends CreepMachine{
         creep.obj.say("Idle")
         return OP_DONE;
     }
-
 }
 
-
-const CreepTypes = {
-    Worker : {name:"Worker", machine:WorkerMachine},
-    Unknown : {name:"Unknown", machine:BasicMachine},
-}
-
-
-const CreepClassOptions = {
-    MODULE_NAME : "CreepClass",
-    VERSION : 1,
-    max_queue_priority : 1,
-    queue_size_list : [4],
-}
-
-class CreepClass {
-    constructor(name) {
-        this.name = name
-        this.obj = Game.creeps[name]
-        this.MODULE_NAME = name
-        Logger.debug(this, "find " + name)
-        // memory
-        if (this.obj.memory.user == undefined)
-            this.obj.memory.user = {}
-        // queue
-        
-        if (this.obj.memory.user.pq == undefined || this.obj.memory.user.pq.module_name != this.MODULE_NAME) {
-            this.obj.memory.user.pq = {}
-            this.pq = new PrioritizedQueue(this.obj.memory.user.pq)
-            this.pq.init(CreepClassOptions.max_queue_priority, CreepClassOptions.queue_size_list, this.MODULE_NAME)
-            this.pq.save()
-        } else {
-            this.pq = new PrioritizedQueue(this.obj.memory.user.pq)
-            this.pq.load()
-        }
-        
-        // type and state machine assignment
-        if (this.obj.memory.user.type == undefined) {
-            this.identify_type()
-        } else {
-            this.type = this.obj.memory.user.type
-            this.machine = CreepTypes[this.type].machine
-        }
-
-    }
-
-    identify_type() {
-        if (this.obj.getActiveBodyparts(WORK) > 0) {
-            this.type = CreepTypes.Worker.name
-            this.machine = CreepTypes.Worker.machine
-        } else {
-            Logger.warn(this, "Get an unknown creep type")
-            this.type = CreepTypes.Unknown.name
-            this.machine = CreepTypes.Unknown.machine
-        }
-        this.obj.memory.user.type = this.type
-    }
-
-    schedule() {
-        if (!this.obj.spawning) {
-            this.machine.schedule(this);
-            this.pq.save();
-        }
-    }
-
-    run() {
-        if (!this.obj.spawning) {
-            this.machine.run(this);
-            this.pq.save();
-        }
-    }
-}
 
 module.exports = {
-    CreepClass,
-    CreepTypes
+    CreepMachine,
+    CreepOp,
 }

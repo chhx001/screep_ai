@@ -121,6 +121,8 @@ module.exports = class PrioritizedQueue {
     }
 
     push(content, priority) {
+        if (priority == undefined)
+            Logger.warn(this, "Priority not defined!")
         var rb = this.queue_list[priority]
         if (rb.is_full()) {
             Logger.error(this, "Prioritized Queue is full when pushing, drop....")

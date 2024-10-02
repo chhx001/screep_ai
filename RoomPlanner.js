@@ -1,6 +1,7 @@
 const Logger = require("./Logger")
 const PrioritizedQueue = require("./PrioritizedQueue");
 const { CpuManager } = require("./CpuManager");
+const { MinerCreepType } = require("./CreepSpawnPolicy");
 
 const OP_DONE = 0;
 const OP_AGAIN_NEXT = 1;
@@ -10,6 +11,7 @@ const ROOM_HEIGHT = 50;
 
 const RoomPlannerOption = {
     DEFAULT_SCAN_INTERVAL : 500,
+    DEFAULT_SCAN_SHORT_INTERVAL: 50,
     max_queue_priority: 1,
     queue_size_list: [100],
     BUILD_PLAN_DEFAULT_MAX_CYCLE: 10,
@@ -186,6 +188,8 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
             if (pos_at[i].type == "structure" && (pos_at[i].structure.structureType != STRUCTURE_CONTAINER && pos_at[i].structure.structureType != STRUCTURE_RAMPART))
                 return
             if (pos_at[i].type == "constructionSite" && pos_at[i].constructionSite.structureType == STRUCTURE_ROAD)
+                return
+            if (pos_at[i].type == "terrain" && pos_at[i].terrain == "wall")
                 return
         }
 
@@ -584,13 +588,16 @@ class BuildPlannerLevel3 extends BuildPlannerLevel2 {
     }
 
     validate_tower_location(x, y) {
+        if (y -  1 < 0 || x - 1 < 0 || y + 1 >= ROOM_HEIGHT || x + 1 >= ROOM_WIDTH)
+            return false;
         var area = this.room.lookAtArea(y-1, x-1, y+1, x+1)
-        if (!this.empty_at(x, y))
+        
+        if (!this.empty_at(area[y][x]))
             return false
-        if (!(this.walkable_at(x-1, y) &&
-        this.walkable_at(x+1, y) &&
-        this.walkable_at(x, y-1) &&
-        this.walkable_at(x, y+1)))
+        if (!(this.walkable_at(area[y][x-1]) &&
+        this.walkable_at(area[y][x+1]) &&
+        this.walkable_at(area[y-1][x]) &&
+        this.walkable_at(area[y+1][x])))
             return false
         return true
     }
@@ -613,7 +620,7 @@ class BuildPlannerLevel3 extends BuildPlannerLevel2 {
          *   R
          * /
         /* still, near the spawn */
-        var spawn_list = room.find(FIND_MY_STRUCTURES, {filter:(s) => {return s.structureType == STRUCTURE_SPAWN}})
+        var spawn_list = this.room.find(FIND_MY_STRUCTURES, {filter:(s) => {return s.structureType == STRUCTURE_SPAWN}})
         var found = false
         var x, y, found_x, found_y;
         if (spawn_list.length > 0) {
@@ -645,6 +652,18 @@ class BuildPlannerLevel3 extends BuildPlannerLevel2 {
         }
         
         
+    }
+
+    schedule() {
+        this.is_new_level();
+        if (CpuManager.agree())
+            this.schedule_plan_roads();
+        if (CpuManager.agree())
+            this.schedule_plan_container();
+        if (CpuManager.agree())
+            this.schedule_plan_extensions();
+        if (CpuManager.agree())
+            this.schedule_plan_tower();
     }
 }
 
@@ -730,12 +749,13 @@ class RoomPlanner {
     scan_resouces() {
         /* resources normally needs only needs to be scanned once */
         if (this.obj.memory.user.resources == undefined) {
-            this.obj.memory.user.resources = {}
+            this.obj.memory.user.resources = {next_tick: 0}
         }
+
         var list;
         /* sources */
         if (this.obj.memory.user.resources.sources == undefined) {
-            this.obj.memory.user.resources.sources = {dict:{}, harvest_cnt:0}
+            this.obj.memory.user.resources.sources = {dict:{}, harvest_cnt:0, next_tick: 0}
             list = this.obj.find(FIND_SOURCES)
             for (var i = 0; i < list.length; i ++) {
                 var source = list[i]
@@ -748,6 +768,28 @@ class RoomPlanner {
                     stances: stance
                 }
             }
+        } else if(this.room.memory.user.resources.sources.next_tick <= Game.time) { /* scan with short intervals */
+            this.room.memory.user.resources.sources.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_SHORT_INTERVAL
+            /* if requesting miner */
+            var dict = this.obj.memory.user.resources.sources.dict
+            var miner_count_in_place = 0;
+            for (var id in dict) {
+                var source = Game.getObjectById(id)
+                /* find creeps which is mining this one */
+                var miner_list = source.pos.findInRange(FIND_MY_CREEPS, 1, {filter: (c) => {return c.memory.user.type == MinerCreepType.name}})
+                var work_part_count = 0
+                this.obj.memory.user.resources.sources.need_miner = false
+                miner_count_in_place += miner_list.length
+                for (var i = 0;i < miner_list.length; i ++) {
+                    var miner = miner_list[i]
+                    work_part_count += miner.getActiveBodyparts(WORK)
+                }
+                this.obj.memory.user.resources.sources.need_miner = ((work_part_count < 6) && (dict[id].stances.length > miner_list.length)); 
+            }
+            /* if there is any miner creeps not in place, stop requesting */
+            var total_miner_list = this.obj.find(FIND_MY_CREEPS, {filter: (c) => {return c.memory.user.type == MinerCreepType.name}})
+            if (total_miner_list.length > miner_count_in_place)
+                this.obj.memory.user.resources.sources.need_miner = false
         }
         /* TODO: other resources */
     }
@@ -760,6 +802,8 @@ class RoomPlanner {
     }
 
     scan_extension_park() {
+        /* if maintain doesn't have extension, skip */
+        if (this.room.memory.user.maintain[STRUCTURE_EXTENSION] == undefined) return;
         /* find the center of each extension park */
         /* the full extension park is always 
          *     E

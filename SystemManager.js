@@ -1,7 +1,8 @@
 const { CpuManager } = require("./CpuManager");
-const { CreepClass } = require("./CreepMachine");
+const { CreepClass } = require("./CreepClass");
 const Logger = require("./Logger");
 const { RoomPlanner } = require("./RoomPlanner");
+const { RoomTowerClass } = require("./RoomTowerMachine");
 const { SpawnClass } = require("./SpawnMachine");
 
 
@@ -89,6 +90,12 @@ const Scheduler = {
                 if (CpuManager.agree())
                     creep.run()
             }
+            /* tower */
+            var room_towers = new RoomTowerClass(spawn.obj.room.name)
+            if (CpuManager.agree())
+                room_towers.schedule()
+            if (CpuManager.agree())
+                room_towers.run()
             
             if (CpuManager.agree()) {
                 planner.schedule_build()

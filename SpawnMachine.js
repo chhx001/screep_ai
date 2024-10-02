@@ -1,4 +1,4 @@
-const { CreepTypes } = require("./CreepMachine")
+const { SpawnPolicy } = require("./CreepSpawnPolicy")
 const Logger = require("./Logger")
 
 class NameGen {
@@ -57,25 +57,13 @@ class SpawnClass {
         this.MODULE_NAME = name;
     }
 
-    try_spawn_worker() {
-        /* if energy is not full, skip */
-        var room = this.obj.room;
-        if (room.energyAvailable != room.energyCapacityAvailable)
-            return;
-
-        /* counter worker */
-        var creep_list = this.obj.room.find(FIND_MY_CREEPS);
-        var count = 0;
-        for (var i in creep_list) {
-            var creep  = creep_list[i]
-            if (creep.memory.user && creep.memory.user.type && creep.memory.user.type == CreepTypes.Worker.name) {
-                count ++;
-            }
-        }
-        Logger.debug(this, "worker count="+count)
-        if (count < SpawnClassOptions.WORKER_LIMIT) {
-            var creep_name = NameGen.gen(CreepTypes.Worker.name)
-            var r = this.obj.spawnCreep(WorkerDesigner.generate(room.energyAvailable), creep_name, {memory:{user:{type:CreepTypes.Worker.name}}});
+    try_spawn() {
+        var room = this.obj.room
+        var creep_type = SpawnPolicy.spawn_what(room.name)
+        if (creep_type) {
+            var creep_name = NameGen.gen(creep_type.name)
+            Memory.user.cache = creep_type.name
+            var r = this.obj.spawnCreep(creep_type.design(room.name), creep_name, {memory:{user:{type:Memory.user.cache}}});
             if (r) {
                 Logger.warn(this, "Spawn failed, err=" + r);
             } else {
@@ -94,10 +82,8 @@ class SpawnClass {
     run() {
         if (this.is_busy())
             return
-        this.try_spawn_worker();
+        this.try_spawn();
     }
-    
-    
     
 }
 

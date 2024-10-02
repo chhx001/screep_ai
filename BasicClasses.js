@@ -20,4 +20,7 @@ class BasicSpawnPolicy {
     }
 }
 
-module.exports = {BasicMachine, BasicSpawnPolicy}
+const OP_DONE = 0
+const OP_AGAIN_NEXT = 1
+
+module.exports = {BasicMachine, BasicSpawnPolicy, OP_DONE, OP_AGAIN_NEXT}
