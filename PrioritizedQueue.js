@@ -126,11 +126,17 @@ module.exports = class PrioritizedQueue {
         var rb = this.queue_list[priority]
         if (rb.is_full()) {
             Logger.error(this, "Prioritized Queue is full when pushing, drop....")
-            return;
+            return null;
         }
         rb.push(content)
         this.dirty = true
         this.save()
+        return {wptr: rb.wptr, priority:priority}      //fence
+    }
+
+    fence_is_signaled(fence) {
+        var rb = this.queue.list[fence.priority]
+        return rb.rptr >= fence.wptr
     }
 
     top_rb() {

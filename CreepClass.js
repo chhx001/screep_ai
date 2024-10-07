@@ -12,10 +12,11 @@ const CreepClassOptions = {
 }
 
 class CreepClass {
-    constructor(name) {
+    constructor(name, parent) {
         this.name = name
         this.obj = Game.creeps[name]
         this.MODULE_NAME = name
+        this.room = parent
         Logger.debug(this, "find " + name)
         // memory
         if (this.obj.memory.user == undefined)

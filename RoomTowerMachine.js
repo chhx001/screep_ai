@@ -52,7 +52,7 @@ class TowerMachine extends BasicMachine {
             op.cur_target_index ++
             return OP_AGAIN_NEXT
         } else {
-            this.pq.pop()
+            room_towers.pq.pop()
             return OP_AGAIN_NEXT
         }
     }
@@ -81,11 +81,11 @@ class TowerMachine extends BasicMachine {
             op.cur_target_index ++
             return OP_AGAIN_NEXT
         } else {
-            this.pq.pop()
+            room_towers.pq.pop()
             return OP_AGAIN_NEXT
         }
     }
-    static heal(tower, op) {
+    static heal(room_towers, op) {
         /* for tower, we may have multiple target, to reduce CPU cost
          * deal with them in group */
         if (op.cur_target_index == undefined)
@@ -110,7 +110,7 @@ class TowerMachine extends BasicMachine {
             op.cur_target_index ++
             return OP_AGAIN_NEXT
         } else {
-            this.pq.pop()
+            room_towers.pq.pop()
             return OP_AGAIN_NEXT
         }
     }

@@ -7,6 +7,16 @@ class MinerMachine extends CreepMachine{
     static do_schedule(creep) {
         /* TODO: Renew */
         var target_list;
+
+        if (creep.obj.ticksToLive < 150) {
+            /* in case multiple spawns in the room, find a closest */
+            var target = creep.obj.pos.findClosestByRange(FIND_MY_STRUCTURES, {filter: (s) => {s.structureType == STRUCTURE_SPAWN}})
+            if (target) {
+                var op = CreepOp.generate(CreepOp.CREEP_OPCODE_RENEW, {target_id:target_id})
+                creep.pq.push(op, 0)
+                return OP_AGAIN_NEXT
+            }
+        }
         
         /* if empty, see if any container has sources stored */
         if (creep.obj.store.getUsedCapacity(RESOURCE_ENERGY) == 0) {

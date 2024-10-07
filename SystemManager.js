@@ -1,9 +1,9 @@
 const { CpuManager } = require("./CpuManager");
 const { CreepClass } = require("./CreepClass");
 const Logger = require("./Logger");
-const { RoomPlanner } = require("./RoomPlanner");
+const { RoomClass } = require("./RoomClass");
 const { RoomTowerClass } = require("./RoomTowerMachine");
-const { SpawnClass } = require("./SpawnMachine");
+const { SpawnClass } = require("./SpawnClass");
 
 
 const GCWorker = {
@@ -70,26 +70,31 @@ const Scheduler = {
         return creep_list
     },
 
+    scan_rooms() {
+        this.room_list = []
+        for (var name in Game.rooms) {
+            var room = new RoomClass(name)
+            room.scan()
+            this.room_list.push(room)
+        }
+    },
+
     schedule() {
-        var spawn_list = Scheduler.scan_spawns();
-        for (var i in spawn_list) {
-            var spawn = spawn_list[i]
-            /* scan room of this spawn */
-            var planner = new RoomPlanner(spawn.obj.room.name)
-            planner.scan()
-            spawn.run();
-            var creep_list = Scheduler.scan_creeps(spawn.obj.room);
-            /* schedule */
-            for (var j in creep_list) {
+        this.scan_rooms()
+        for (var i = 0; i < this.room_list; i ++) {
+            var room = this.room_list[i]
+            for (var j = 0; j < room.spawn_list.length; j ++) {
+                var spawn = room.spawn_list[j]
+                spawn.run()
+            }
+
+            for (var j = 0; j < room.creep_list.length; j++) {
                 var creep = creep_list[j]
                 creep.schedule()
-            }
-            /* run */
-            for (var j in creep_list) {
-                var creep = creep_list[j]
                 if (CpuManager.agree())
                     creep.run()
             }
+            
             /* tower */
             var room_towers = new RoomTowerClass(spawn.obj.room.name)
             if (CpuManager.agree())
@@ -97,12 +102,17 @@ const Scheduler = {
             if (CpuManager.agree())
                 room_towers.run()
             
+            
+        }
+        /* low priority tasks */
+        for (var i = 0; i < this.room_list; i ++) {
+            var room = this.room_list[i]
             if (CpuManager.agree()) {
-                planner.schedule_build()
+                room.schedule_build()
             }
 
             if (CpuManager.agree) {
-                planner.run_build()
+                room.run_build()
             }
         }
     },

@@ -1,7 +1,9 @@
 const Logger = require("./Logger")
 const PrioritizedQueue = require("./PrioritizedQueue");
 const { CpuManager } = require("./CpuManager");
-const { MinerCreepType } = require("./CreepSpawnPolicy");
+const { MinerCreepType } = require("./SpawnMachine");
+const { SpawnClass } = require("./SpawnClass");
+const { CreepClass } = require("./CreepClass");
 
 const OP_DONE = 0;
 const OP_AGAIN_NEXT = 1;
@@ -165,6 +167,8 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
                 memory_entry.count = count
                 memory_entry.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL;
                 return true
+            } else {
+                memory_entry.count = count
             }
         }
 
@@ -355,7 +359,8 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
         
         var source_num = Object.keys(this.room.memory.user.resources.sources.dict).length
         
-        if (!this.check_for_replan(STRUCTURE_CONTAINER, FIND_MY_STRUCTURES, FIND_MY_CONSTRUCTION_SITES, this.room.memory.user.maintain[STRUCTURE_CONTAINER], source_num)) {
+        if (!this.check_for_replan(STRUCTURE_CONTAINER, FIND_MY_STRUCTURES, FIND_MY_CONSTRUCTION_SITES,
+            this.room.memory.user.maintain[STRUCTURE_CONTAINER], source_num)) {
             /* doesn't need replan */
             return
         }
@@ -368,7 +373,7 @@ class BuildPlannerLevel1 extends BuildPlannerLevel0 {
                 /* plan for this source */
                 var source = Game.getObjectById(src_id)
                 /* if source already has an container in range 2, skip */
-                if (source.pos.findInRange(FIND_MY_STRUCTURES, {filter:(s)=>{return s.structureType == STRUCTURE_CONTAINER}}).length > 0)
+                if (source.pos.findInRange(FIND_MY_STRUCTURES, 2, {filter:(s)=>{return s.structureType == STRUCTURE_CONTAINER}}).length > 0)
                     continue;
 
                 /* find a place, which distance_to_source=2, terrain is plain or swamp, no source/mineral and structure(except road) in distance1 */
@@ -720,7 +725,7 @@ const BuildPlanner = {
 
 
 
-class RoomPlanner {
+class RoomClass {
     
     constructor(name) {
         this.MODULE_NAME = name
@@ -863,9 +868,39 @@ class RoomPlanner {
         this.room.memory.user.maintain.next_tick = Game.time + RoomPlannerOption.DEFAULT_SCAN_INTERVAL;
     }
 
+    scan_spawns() {
+        var spawn_list = this.room.find(FIND_MY_STRUCTURES, {filter: (s) => {return s.structureType == STRUCTURE_SPAWN}})
+        this.spawn_list = []
+        for (var i = 0;i < spawn_list.length; i++) {
+            this.spawn_list.push(new SpawnClass(spawn_list[i].name, this))
+        }
+    }
+
+    get_spawn_by_name(name) {
+        for (var i = 0;i < this.spawn_list.length; i++) {
+            if (this.spawn_list[i].obj.name == name) {
+                return this.spawn_list[i]
+            }
+        }
+        return null
+    }
+
+    scan_creeps() {
+        var creep_list = this.room.find(FIND_MY_CREEPS)
+        this.creep_list = []
+        for (var i = 0; i < creep_list.length; i++) {
+            this.creep_list.push(new CreepClass(creep_list[i].name, this))
+        }
+    }
+
     scan() {
-        this.scan_resouces();
-        this.scan_for_maintainance();
+        this.scan_spawns();
+        this.scan_creeps();
+        /* only working room needs to check resource and maintainance */
+        if (this.spawn_list.length > 0) {
+            this.scan_resouces();
+            this.scan_for_maintainance();
+        }
     }
 
     schedule_build() {
@@ -880,4 +915,4 @@ class RoomPlanner {
 
 }
 
-module.exports = {RoomPlanner}
+module.exports = {RoomClass}

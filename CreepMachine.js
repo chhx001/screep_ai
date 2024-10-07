@@ -1,6 +1,7 @@
 const { BasicMachine } = require("./BasicClasses");
 const Logger = require("./Logger");
 const PrioritizedQueue = require("./PrioritizedQueue");
+const { SpawnOp } = require("./SpawnMachine");
 
 const OP_DONE = 0;
 const OP_AGAIN_NEXT = 1;
@@ -13,6 +14,7 @@ const CreepOp = {
     CREEP_OPCODE_BUILD           : 0x1004,
     CREEP_OPCODE_REPAIR          : 0x1005,
     CREEP_OPCODE_WITHDRAW        : 0x1006,
+    CREEP_OPCODE_RENEW           : 0x1007,
 
     generate(opcode, params) {
         var ret = {}
@@ -200,7 +202,7 @@ class CreepMachine extends BasicMachine {
     }
 
     static repair(creep, op) {
-        creep.obj.say('repair')
+        creep.obj.say('Repair')
         if (creep.obj.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
             if (op.target_id == undefined) {
                 /* hash it by time, random pick one */
@@ -234,6 +236,47 @@ class CreepMachine extends BasicMachine {
             /* if no target, pop*/
             creep.pq.pop();
             return OP_AGAIN_NEXT;
+        }
+    }
+
+    static renew(creep, op) {
+        creep.obj.say('Renew')
+        var target = Game.getObjectById(op.target_id)
+        /* not near, move first */
+        if (creep.obj.pos.getRangeTo(target) > 1) {
+            return CreepMachine.move(creep, op)
+        }
+        /* already near, notify spawn to renew me */
+        var room = creep.room;  // parent room
+        var spawn = room.get_spawn_by_name(target.name)
+        if (spawn) {
+            /* no fence, push event and wait fence */
+            if (op.fence == undefined) {
+                var fence = spawn.pq.push(SpawnOp.generate(SpawnOp.SPAWN_OP_RENEW_CREEP, {target_id:creep.obj.id}))
+                if (!fence) {
+                    /* probably spawn pq is full, wait*/
+                    return OP_DONE
+                } else {
+                    op.fence = fence
+                    return OP_DONE
+                }
+            } else {
+                /* fence exists, wait for fence back */
+                var fence = op.fence
+                if (spawn.pq.fence_is_signaled(fence)) {
+                    creep.pq.pop()
+                    if (creep.obj.ticksToLive < 500) {
+                        /* renew rejected, not renew anymore */
+                        creep.obj.memory.user.ected = true
+                    }
+                }
+                return OP_DONE
+            }
+
+        } else {
+            Logger.warn(creep, "renew but spawn not in the list")
+            creep.pq.pop();
+            return OP_DONE
         }
     }
 
@@ -278,7 +321,7 @@ class CreepMachine extends BasicMachine {
                         cycle +=creep.machine.repair(creep, op)
                         break;
                     default:
-                        Logger.error(creep, "Unknown opcode " + op.code)
+                        Logger.warn(creep, "Unknown opcode " + op.code)
                         creep.pq.pop()
                         break;
                 }
